@@ -86,7 +86,9 @@ export const editCategory = async (req, res) => {
 
     const category = await Category.findById(id);
     if (!category) {
-      return res.status(404).json({ success: false, message: "Category not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Category not found" });
     }
 
     const { name, vendors, subCategories, coverImage } = req.body;
@@ -95,7 +97,9 @@ export const editCategory = async (req, res) => {
     if (name && name !== category.name) {
       const exists = await Category.findOne({ name });
       if (exists) {
-        return res.status(409).json({ success: false, message: "Category name already exists" });
+        return res
+          .status(409)
+          .json({ success: false, message: "Category name already exists" });
       }
       category.name = name;
     }
@@ -138,7 +142,9 @@ export const deleteCategory = async (req, res) => {
 
     const category = await Category.findByIdAndDelete(id);
     if (!category) {
-      return res.status(404).json({ success: false, message: "Category not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Category not found" });
     }
 
     res.status(200).json({
@@ -147,5 +153,57 @@ export const deleteCategory = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// -------------------------------------------
+// @desc    Get a single category by slug or ID
+// @route   GET /api/categories/:identifier
+// @access  Public
+// -------------------------------------------
+export const getCategory = async (req, res) => {
+  try {
+    const { identifier } = req.params;
+
+    let category;
+
+    // If identifier is a valid MongoDB ObjectId, search by _id
+    if (mongoose.Types.ObjectId.isValid(identifier)) {
+      category = await Category.findById(identifier)
+        .populate("vendors", "name")
+        .populate({
+          path: "subCategories",
+          select: "_id name slug mainCategory",
+          populate: { path: "mainCategory", select: "_id name slug" }, // nested populate
+        });
+    }
+
+    // If not found yet, or identifier is not an ObjectId, search by slug
+    if (!category) {
+      category = await Category.findOne({ slug: identifier })
+        .populate("vendors", "name")
+        .populate({
+          path: "subCategories",
+          select: "_id name slug mainCategory coverImage",
+          populate: { path: "mainCategory", select: "_id name slug" },
+        });
+    }
+
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      category,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };

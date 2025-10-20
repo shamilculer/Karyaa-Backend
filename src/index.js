@@ -10,6 +10,7 @@ import ideaRoutes from "./routes/idea.routes.js"
 import subCategoryRoutes from "./routes/subCategory.routes.js"
 import categoryRoutes from "./routes/category.routes.js"
 import vendorRoutes from "./routes/vendor.routes.js"
+import contactRoutes from "./routes/contact.route.js"
 
 import cookieParser from 'cookie-parser';
 
@@ -35,6 +36,7 @@ app.use('/api/v1/idea', ideaRoutes);
 app.use('/api/v1/subcategories', subCategoryRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/vendor', vendorRoutes);
+app.use('/api/v1/contact', contactRoutes);
 
 
 const startServer = async () => {
