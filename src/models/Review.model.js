@@ -1,53 +1,62 @@
+// models/Review.model.js
+
 import mongoose from "mongoose";
+import { updateVendorRating } from "../utils/updateVendorRating.js";
 
 const reviewSchema = new mongoose.Schema(
-  {
-    vendor: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Vendor", // Links the review to the Vendor model
-      required: [true, "Vendor ID is required for the review"],
-      index: true, // Index this field for fast lookups
+    {
+        vendor: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Vendor",
+            required: [true, "Vendor ID is required for the review"],
+            index: true,
+        },
+        user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User", 
+            required: [true, "User ID is required"],
+        },
+        rating: {
+            type: Number,
+            min: 1,
+            max: 5,
+            required: [true, "Rating value is required (1-5)"],
+        },
+        comment: {
+            type: String,
+            trim: true,
+            required: [true, "Review comment is required"],
+        },
+        // Admin Approval Field
+        status: {
+            type: String,
+            enum: ["Pending", "Approved", "Rejected"],
+            default: "Approved",
+            index: true,
+        },
     },
-    client: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Client", // Assuming a separate model for clients/users
-      required: [true, "Client ID is required"],
-    },
-    clientName: {
-      type: String, // Store client name redundancy for easier display
-      required: true,
-      trim: true,
-    },
-    rating: {
-      type: Number,
-      min: 1,
-      max: 5,
-      required: [true, "Rating value is required (1-5)"],
-    },
-    comment: {
-      type: String,
-      trim: true,
-      required: [true, "Review comment is required"],
-    },
-    // 💡 Admin Approval Field
-    status: {
-      type: String,
-      enum: ["Pending", "Approved", "Rejected"],
-      default: "Pending", // New reviews require admin approval before being shown
-      index: true, // Index this field for quickly fetching 'Approved' reviews
-    },
-    // Field to store details about the event or service type (optional but helpful)
-    serviceType: {
-      type: String,
-      trim: true,
-      maxlength: 50,
-    },
-  },
-  { timestamps: true } // Adds createdAt and updatedAt fields
+    { timestamps: true }
 );
 
-// Add a unique index to prevent a client from reviewing the same vendor multiple times
-reviewSchema.index({ vendor: 1, client: 1 }, { unique: true });
+reviewSchema.index({ vendor: 1, user: 1 }, { unique: true }); 
+
+// --- Mongoose Middleware Hooks for Vendor Stat Recalculation ---
+
+reviewSchema.post("save", async function () {
+    await updateVendorRating(this.vendor);
+});
+
+
+reviewSchema.pre("deleteOne", { document: true, query: false }, async function (next) {
+    this._vendorId = this.vendor; 
+    next();
+});
+
+
+reviewSchema.post("deleteOne", { document: true, query: false }, async function () {
+    await updateVendorRating(this._vendorId);
+});
+
 
 const Review = mongoose.model("Review", reviewSchema);
 

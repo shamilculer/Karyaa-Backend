@@ -4,9 +4,8 @@ import {
     loginVendor, 
     getActiveVendors, 
     getSingleVendor,
-    // --- NEW IMPORTS ---
-    getVendorOptions, 
-    getVendorsForComparison // Import the new controller functions
+    getVendorOptions,
+    getVendorsForComparison
 } from "../controllers/vendor.controller.js";
 
 const router = express.Router();
@@ -17,23 +16,19 @@ const router = express.Router();
 router.post('/auth/register', registerVendor);
 router.post('/auth/login', loginVendor);
 
-
 // -------------------------------------------------------------------
-// --- COMPARISON ROUTES (NEW) ---
+// --- COMPARE VENDOR ROUTES (Must be BEFORE dynamic /:identifier) ---
 // -------------------------------------------------------------------
-
-// GET /api/vendors/options - Fetches minimal data for the comparison combobox dropdowns
-router.get('/options', getVendorOptions);
-
-// GET /api/vendors/compare?slugs=... - Fetches detailed data for the comparison table
+router.get('/options', getVendorOptions); 
 router.get('/compare', getVendorsForComparison);
-
 
 // -------------------------------------------------------------------
 // --- PUBLIC VENDOR DATA ROUTES ---
 // -------------------------------------------------------------------
 router.get('/active', getActiveVendors);
-router.get('/:identifier', getSingleVendor);
 
+// IMPORTANT: This dynamic route MUST be LAST
+// Otherwise it will catch /options and /compare as identifiers
+router.get('/:identifier', getSingleVendor);
 
 export default router;

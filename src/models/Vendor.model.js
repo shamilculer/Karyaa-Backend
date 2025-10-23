@@ -194,14 +194,13 @@ const vendorSchema = new mongoose.Schema(
       type: Number,
       min: 0,
       default: 0,
-    }, // --- UPDATED: socialMediaLinks (Removed whatsapp, twitter, website; Added linkedin, tiktok) ---
+    }, 
     socialMediaLinks: {
       instagram: String,
       facebook: String,
       linkedin: String, // NEW FIELD
       tiktok: String, // NEW FIELD
     },
-
     averageRating: {
       type: Number,
       min: 0,
@@ -212,7 +211,13 @@ const vendorSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-
+    ratingBreakdown: {
+      1: { type: Number, default: 0 }, // count, not percentage
+      2: { type: Number, default: 0 },
+      3: { type: Number, default: 0 },
+      4: { type: Number, default: 0 },
+      5: { type: Number, default: 0 },
+    },
     isSponsored: {
       type: Boolean,
       default: false,

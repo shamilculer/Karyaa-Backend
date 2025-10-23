@@ -457,20 +457,17 @@ export const getSingleVendor = async (req, res) => {
     }
 };
 
-// ==========================================================
-// --- NEW: COMPARISON FEATURE ENDPOINTS ---
-// ==========================================================
-
 /**
  * @desc Get minimal data for all active vendors (for Combobox options)
- * @route GET /api/vendors/options
+ * @route GET /api/v1/vendor/options
  * @access Public
  */
 export const getVendorOptions = async (req, res) => {
     try {
         const options = await Vendor.find({ vendorStatus: "Active" })
             .select("slug businessName")
-            .lean(); // Use .lean() for faster retrieval of minimal data
+            .sort({ businessName: 1 }) // Sort alphabetically for better UX
+            .lean(); // Faster retrieval
 
         return res.status(200).json({ success: true, data: options });
     } catch (error) {
@@ -482,50 +479,71 @@ export const getVendorOptions = async (req, res) => {
     }
 };
 
+
 /**
  * @desc Get full details for a list of vendors by their slugs (for CompareTable initial load)
- * @route GET /api/vendors/compare
+ * @route GET /api/v1/vendor/compare
  * @access Public
- * @query slugs - comma-separated list of vendor slugs
+ * @query slugs - comma-separated list of vendor slugs (e.g., ?slugs=slug1,slug2)
  */
 export const getVendorsForComparison = async (req, res) => {
-    // Slugs are expected in the query string: /api/vendors/compare?slugs=slug1,slug2
     const slugsQuery = req.query.slugs;
+
+    console.log('📥 Received slugs query:', slugsQuery);
+    console.log('📥 Query params:', req.query);
 
     if (!slugsQuery) {
         return res.status(200).json({ success: true, data: [] });
     }
     
-    // Convert the comma-separated string back into an array of unique slugs
     const slugs = [...new Set(slugsQuery.split(',').filter(s => s.trim() !== ''))];
-
-    // Define the projection (fields needed for the comparison table)
-    const projection = [
-        "businessName", "slug", "tagline", "businessLogo", 
-        "pricingStartingFrom", "averageRating", "isSponsored", 
-        "address.city", "address.country", 
-        "mainCategory", 
-        "gallery.url", 
-    ].join(' ');
+    
+    console.log('📋 Parsed slugs array:', slugs);
 
     try {
+        // First, check if vendor exists at all (ignore status)
+        const allVendors = await Vendor.find({ 
+            slug: { $in: slugs }
+        }).select('slug businessName vendorStatus').lean();
+        
+        console.log('🔍 Found ALL vendors (any status):', allVendors);
+
+        // Now get active ones
         const vendors = await Vendor.find({ 
             slug: { $in: slugs },
-            vendorStatus: "Active",
-            isVerified: true // Assuming only verified vendors can be compared
-        }).select(projection)
-          .populate({ path: 'mainCategory', select: 'name slug' }) // Populate category name/slug
-          .lean();
+            vendorStatus: "Active"
+        })
+        .select({
+            slug: 1,
+            businessName: 1,
+            businessLogo: 1, 
+            pricingStartingFrom: 1,
+            averageRating: 1,
+            isSponsored: 1, 
+            'address.city': 1,
+            'address.country': 1,
+            mainCategory: 1,
+            serviceAreaCoverage: 1,
+            reviewCount: 1,
+            gallery: 1,
+            _id: 1
+        })
+        .populate({ path: 'mainCategory', select: 'name slug' }) 
+        .lean();
 
-        // Optional: Ensure the returned list generally follows the order of the request
-        const orderedVendors = slugs.map(slug => vendors.find(v => v.slug === slug)).filter(v => v);
+        console.log('✅ Found ACTIVE vendors:', vendors);
+
+        const orderedVendors = slugs
+            .map(slug => vendors.find(v => v.slug === slug))
+            .filter(v => v);
         
         return res.status(200).json({ success: true, data: orderedVendors });
     } catch (error) {
-        console.error("Error fetching vendors for comparison:", error);
+        console.error("❌ Error fetching vendors:", error);
         return res.status(500).json({ 
             success: false, 
-            message: "Server error while fetching comparison data." 
+            message: "Server error while fetching comparison data.",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
