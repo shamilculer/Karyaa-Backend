@@ -27,11 +27,19 @@ const reviewSchema = new mongoose.Schema(
             trim: true,
             required: [true, "Review comment is required"],
         },
-        // Admin Approval Field
+
+        // ✅ Admin Approval Field
         status: {
             type: String,
             enum: ["Pending", "Approved", "Rejected"],
             default: "Approved",
+            index: true,
+        },
+
+        // ✅ Flag system for moderation
+        flaggedForRemoval: {
+            type: Boolean,
+            default: false,
             index: true,
         },
     },
@@ -41,22 +49,18 @@ const reviewSchema = new mongoose.Schema(
 reviewSchema.index({ vendor: 1, user: 1 }, { unique: true }); 
 
 // --- Mongoose Middleware Hooks for Vendor Stat Recalculation ---
-
 reviewSchema.post("save", async function () {
     await updateVendorRating(this.vendor);
 });
-
 
 reviewSchema.pre("deleteOne", { document: true, query: false }, async function (next) {
     this._vendorId = this.vendor; 
     next();
 });
 
-
 reviewSchema.post("deleteOne", { document: true, query: false }, async function () {
     await updateVendorRating(this._vendorId);
 });
-
 
 const Review = mongoose.model("Review", reviewSchema);
 

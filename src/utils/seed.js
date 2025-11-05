@@ -1,69 +1,116 @@
-// NOTE: This script assumes you are using Mongoose and have a Vendor model imported.
-import Vendor from "../models/Vendor.model.js";
+import Idea from "../models/Idea.model.js";
+import IdeaCategory from "../models/IdeaCategory.model.js";
 
-export async function seed() {
-    // --- 1. HARDCODED VENDOR ID ---
-    // Replace with the ID of the vendor you want to modify (e.g., '65f57345672d689e4c5f3e2c')
-    const VENDOR_ID = "68f4c61bd9f2d27070d38eee"; 
 
-    // --- 2. HARDCODED GALLERY DATA ---
-    // This is the new array that will *completely replace* the vendor's existing gallery.
-    const newGalleryArray = [
-        { 
-            url: 'https://res.cloudinary.com/dlcrywuub/image/upload/v1760872230/cover-1_yrmycm.jpg', 
-            type: 'image' 
-        },
-        { 
-            url: 'https://res.cloudinary.com/dlcrywuub/image/upload/v1760872230/cover-5_albebb.jpg', 
-            type: 'image' 
-        },
-        { 
-            url: 'https://res.cloudinary.com/dlcrywuub/image/upload/v1760872230/cover-6_awirel.jpg', 
-            type: 'image' 
-        },
-        { 
-            url: 'https://res.cloudinary.com/dlcrywuub/image/upload/v1760872231/cover-8_klcrbc.jpg', 
-            type: 'image' 
-        },
-        { 
-            url: 'https://res.cloudinary.com/dlcrywuub/image/upload/v1760872230/cover-2_jgygan.jpg', 
-            type: 'image' 
-        },
-        { 
-            url: 'https://res.cloudinary.com/dlcrywuub/image/upload/v1760872231/cover-12_zdhaio.jpg', 
-            type: 'image' 
-        },
-    ];
-    // ----------------------------------------
-    
-    try {
-        const updatedVendor = await Vendor.findByIdAndUpdate(
-            VENDOR_ID,
-            {
-                // $set replaces the entire 'gallery' field with the new array
-                $set: { gallery: newGalleryArray },
-            },
-            { 
-                new: true, // Returns the updated document
-                runValidators: true // Ensures the new data adheres to the Zod/Mongoose schema
-            }
-        );
+const DUMMY_IMAGE_URLS = [
+  "https://res.cloudinary.com/dlcrywuub/image/upload/v1762260925/ideas/gallery/ivbkxp32tywl7gz3dsja.webp",
+  "https://res.cloudinary.com/dlcrywuub/image/upload/v1762260925/ideas/gallery/iep7s0b9qcupp8voozlf.webp",
+  "https://res.cloudinary.com/dlcrywuub/image/upload/v1762260765/ideas/gallery/a4djzdpncxiur3hw7eaw.jpg",
+  "https://res.cloudinary.com/dlcrywuub/image/upload/v1762260743/ideas/gallery/oi9pr3ujwr81c4yisvqj.jpg",
+  "https://res.cloudinary.com/dlcrywuub/image/upload/v1762090709/temp_vendors/6b5d9c85-1c07-4f69-8227-61eebe30ef6d/bxgqdrictv30xm6l04qm.webp",
+];
 
-        if (!updatedVendor) {
-            console.error(`Error: Vendor with ID ${VENDOR_ID} not found.`);
-            return null;
+const dummyIdeas = [
+  {
+    title: "Tropical Luxe Wedding Proposal",
+    description:
+      "An extravagant, private beach proposal with a floral arch, professional lighting, and a private chef. Focused on Engagement & Proposal Events.",
+    categoryName: "Engagement & Proposal Events",
+    gallery: DUMMY_IMAGE_URLS,
+  },
+  {
+    title: "Vintage Tea Party Baby Shower",
+    description:
+      "A charming, vintage-themed tea party held outdoors, featuring pastel colors and custom-made miniature sandwiches. Ideal for a Gender Reveal.",
+    categoryName: "Baby Showers & Gender Reveals",
+    gallery: DUMMY_IMAGE_URLS,
+  },
+  {
+    title: "Art Deco 30th Birthday Bash",
+    description:
+      "A stylish 30th birthday party with an Art Deco theme, black and gold decor, and a dedicated photo booth area.",
+    categoryName: "Birthdays & Anniversaries",
+    gallery: DUMMY_IMAGE_URLS,
+  },
+  {
+    title: "Sustainable Product Launch",
+    description:
+      "A zero-waste product launch held in a minimalist, green space to highlight the new eco-friendly product line. Focused on brand alignment.",
+    categoryName: "Product Launches & Brand Events",
+    gallery: DUMMY_IMAGE_URLS,
+  },
+];
+
+/**
+ * Creates dummy Idea documents using insertMany.
+ * @throws {Error} If categories are missing or insertion fails.
+ */
+export const seed = async () => {
+  console.log("--- Starting Ideas dummy data creation ---");
+
+  try {
+    // Essential check to ensure the categories are available
+    const categories = await IdeaCategory.find({}, "name");
+    if (categories.length === 0) {
+      console.error(
+        "❌ FATAL: Idea Categories NOT FOUND. Please run category seeder first."
+      );
+      return [];
+    }
+
+    const categoryMap = categories.reduce((map, cat) => {
+      map[cat.name] = cat._id;
+      return map;
+    }, {}); // --- 1. Prepare Valid Idea Documents ---
+
+    const ideaDocuments = dummyIdeas
+      .map((item) => {
+        const categoryId = categoryMap[item.categoryName];
+
+        if (!categoryId) {
+          console.warn(
+            `⚠️ Skipping idea: Category '${item.categoryName}' not found in the database.`
+          );
+          return null;
         }
 
-        console.log(`✅ Gallery array successfully replaced for vendor ID: ${VENDOR_ID}`);
-        console.log("New Gallery Count:", updatedVendor.gallery.length);
-        return updatedVendor;
+        return {
+          title: item.title,
+          description: item.description,
+          category: categoryId,
+          gallery: item.gallery,
+          // NOTE: submittedBy is omitted to use schema default (null),
+          // bypassing potential foreign key errors.
+        };
+      })
+      .filter((doc) => doc !== null);
 
-    } catch (error) {
-        console.error(`❌ Failed to update gallery for vendor ${VENDOR_ID}:`, error);
-        throw error;
-    }
-}
+    if (ideaDocuments.length === 0) {
+      console.log("No valid idea documents to insert.");
+      return [];
+    } // --- 2. Create the new Idea documents ---
 
-// Example Execution (Call this function with the vendor's ID):
-// replaceVendorGallery('65f57345672d689e4c5f3e2c')
-//     .catch(err => console.error(err));
+    // Using Promise.all(Idea.create) for robust, individual error handling
+    // in case one document fails validation.
+    const creationPromises = ideaDocuments.map((doc) => {
+      // Mongoose's create method will run the pre('save') hook for slug generation.
+      return Idea.create(doc).catch((err) => {
+        // Log and return null for failed documents to allow others to succeed
+        console.error(`❌ Failed to create idea "${doc.title}":`, err.message);
+        return null;
+      });
+    });
+
+    const results = await Promise.all(creationPromises);
+    const successfulInserts = results.filter((r) => r !== null);
+
+    console.log(
+      `✅ Ideas dummy data creation completed. ${successfulInserts.length} new ideas added.`
+    );
+
+    return successfulInserts;
+  } catch (error) {
+    console.error("❌ Error during Ideas dummy data creation:", error); // For the calling function to handle the error
+    throw new Error(`Failed to create dummy Ideas: ${error.message}`);
+  }
+};

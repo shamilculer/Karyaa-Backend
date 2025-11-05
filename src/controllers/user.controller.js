@@ -9,7 +9,8 @@ import bcrypt from "bcrypt";
 // @access  Public (Admin can create any role)
 // -------------------------
 export const createUser = async (req, res) => {
-  const { username, emailAddress, mobileNumber, location, password, role } = req.body;
+  const { username, emailAddress, mobileNumber, location, password, role } =
+    req.body;
 
   try {
     // 1. Check if user already exists
@@ -61,7 +62,9 @@ export const createUser = async (req, res) => {
     console.error("Registration error:", error);
     if (error.name === "ValidationError") {
       const messages = Object.values(error.errors).map((val) => val.message);
-      return res.status(400).json({ success: false, message: messages.join(", ") });
+      return res
+        .status(400)
+        .json({ success: false, message: messages.join(", ") });
     }
     res.status(500).json({ message: "Failed to register user" });
   }
@@ -92,7 +95,9 @@ export const loginUser = async (req, res) => {
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid credentials (password)." });
+      return res
+        .status(401)
+        .json({ message: "Invalid credentials (password)." });
     }
 
     const { accessToken, refreshToken } = generateTokens(user);
@@ -122,46 +127,7 @@ export const loginUser = async (req, res) => {
 // @access  Public
 // -------------------------
 export const logoutUser = async (req, res) => {
-  return res
-    .status(200)
-    .json({ message: "Logged out successfully" });
-};
-
-// -------------------------
-// @desc    Refresh access token
-// @route   POST /api/user/auth/refresh-token
-// @access  Public
-// -------------------------
-export const refreshAccessToken = async (req, res) => {
-  try {
-    const { refreshToken } = req.body;
-
-    if (!refreshToken) {
-      return res.status(401).json({ message: "Refresh token required" });
-    }
-
-    let payload;
-    try {
-      payload = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-    } catch (err) {
-      return res.status(401).json({ message: "Invalid or expired refresh token" });
-    }
-
-    const user = await User.findById(payload.id).select("-password -passwordChangedAt");
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const { accessToken, refreshToken: newRefreshToken } = generateTokens(user);
-
-    res.status(200).json({
-      accessToken,
-      refreshToken: newRefreshToken,
-    });
-  } catch (err) {
-    console.error("Token refresh error:", err);
-    res.status(500).json({ message: "Failed to refresh token" });
-  }
+  return res.status(200).json({ message: "Logged out successfully" });
 };
 
 // -------------------------
@@ -192,34 +158,32 @@ export const fetchUserSession = async (req, res) => {
 // @access  Protected (User must be logged in)
 // -----------------------------------------------------------------------------------
 export const getSavedVendors = async (req, res) => {
-    try {
-        // req.user.id is set by your authentication middleware
-        const userId = req.user.id; 
+  try {
+    // req.user.id is set by your authentication middleware
+    const userId = req.user.id;
 
-        const user = await User.findById(userId)
-            .select('savedVendors') 
-            .populate({
-                path: 'savedVendors',
-                select: 'businessName slug aboutDescription businessLogo averageRating reviewCount pricingStartingFrom isSponsored address.city serviceAreaCoverage gallery', 
-            });
+    const user = await User.findById(userId).select("savedVendors").populate({
+      path: "savedVendors",
+      select:
+        "businessName slug aboutDescription businessLogo averageRating reviewCount pricingStartingFrom isSponsored address.city serviceAreaCoverage gallery",
+    });
 
-        if (!user) {
-            return res.status(404).json({ message: "User not found." });
-        }
-
-        // 2. Send the populated list of vendors
-        res.status(200).json({
-            status: 'success',
-            results: user.savedVendors.length,
-            data: {
-                savedVendors: user.savedVendors,
-            },
-        });
-        
-    } catch (error) {
-        console.error("Error fetching saved vendors:", error);
-        res.status(500).json({ message: "Failed to retrieve saved vendors." });
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
     }
+
+    // 2. Send the populated list of vendors
+    res.status(200).json({
+      status: "success",
+      results: user.savedVendors.length,
+      data: {
+        savedVendors: user.savedVendors,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching saved vendors:", error);
+    res.status(500).json({ message: "Failed to retrieve saved vendors." });
+  }
 };
 
 // -----------------------------------------------------------------------------------
@@ -228,52 +192,51 @@ export const getSavedVendors = async (req, res) => {
 // @access  Protected (User must be logged in)
 // -----------------------------------------------------------------------------------
 export const toggleSavedVendor = async (req, res) => {
-    const { vendorId } = req.body;
-    const userId = req.user.id; 
+  const { vendorId } = req.body;
+  const userId = req.user.id;
 
-    if (!vendorId) {
-        return res.status(400).json({ message: "Vendor ID is required." });
+  if (!vendorId) {
+    return res.status(400).json({ message: "Vendor ID is required." });
+  }
+
+  try {
+    // 1. Check if the vendor is already saved
+    const user = await User.findById(userId).select("savedVendors");
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
     }
 
-    try {
-        // 1. Check if the vendor is already saved
-        const user = await User.findById(userId).select('savedVendors');
-        if (!user) {
-            return res.status(404).json({ message: "User not found." });
-        }
+    const isSaved = user.savedVendors.includes(vendorId);
 
-        const isSaved = user.savedVendors.includes(vendorId);
-        
-        let updateOperation, message, savedStatus;
+    let updateOperation, message, savedStatus;
 
-        if (isSaved) {
-            // 2. If it is saved, UN-SAVE it ($pull removes the ID)
-            updateOperation = { $pull: { savedVendors: vendorId } };
-            message = "Vendor removed from saved list.";
-            savedStatus = false;
-        } else {
-            // 3. If it is NOT saved, SAVE it ($addToSet adds the ID only if it doesn't exist)
-            updateOperation = { $addToSet: { savedVendors: vendorId } };
-            message = "Vendor added to saved list.";
-            savedStatus = true;
-        }
-
-        // 4. Execute the atomic update
-        await User.findByIdAndUpdate(userId, updateOperation, { new: true });
-
-        // 5. Send the response with the status and message
-        res.status(200).json({
-            success: true,
-            message: message,
-            saved: savedStatus,
-        });
-        
-    } catch (error) {
-        console.error("Error toggling saved vendor:", error);
-        // This could capture validation errors (e.g., invalid vendorId format)
-        if (error.name === "CastError") {
-             return res.status(400).json({ message: "Invalid vendor ID format." });
-        }
-        res.status(500).json({ message: "Failed to update saved vendor list." });
+    if (isSaved) {
+      // 2. If it is saved, UN-SAVE it ($pull removes the ID)
+      updateOperation = { $pull: { savedVendors: vendorId } };
+      message = "Vendor removed from saved list.";
+      savedStatus = false;
+    } else {
+      // 3. If it is NOT saved, SAVE it ($addToSet adds the ID only if it doesn't exist)
+      updateOperation = { $addToSet: { savedVendors: vendorId } };
+      message = "Vendor added to saved list.";
+      savedStatus = true;
     }
+
+    // 4. Execute the atomic update
+    await User.findByIdAndUpdate(userId, updateOperation, { new: true });
+
+    // 5. Send the response with the status and message
+    res.status(200).json({
+      success: true,
+      message: message,
+      saved: savedStatus,
+    });
+  } catch (error) {
+    console.error("Error toggling saved vendor:", error);
+    // This could capture validation errors (e.g., invalid vendorId format)
+    if (error.name === "CastError") {
+      return res.status(400).json({ message: "Invalid vendor ID format." });
+    }
+    res.status(500).json({ message: "Failed to update saved vendor list." });
+  }
 };

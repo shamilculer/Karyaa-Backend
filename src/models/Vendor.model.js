@@ -1,26 +1,11 @@
 import mongoose from "mongoose";
+import bcrypt from "bcrypt";
 
-const vendorSchema = new mongoose.Schema(
+const vendorSchema = mongoose.Schema(
   {
     ownerName: {
       type: String,
       required: [true, "Owner's Name is required for registration"],
-      trim: true,
-    },
-    businessName: {
-      type: String,
-      required: [true, "Business Name is required for vendor listing"],
-      unique: true,
-      trim: true,
-    },
-    ownerProfileImage: {
-      type: String,
-      trim: true,
-    },
-    slug: {
-      type: String,
-      unique: true,
-      lowercase: true,
       trim: true,
     },
     email: {
@@ -40,18 +25,9 @@ const vendorSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
       minlength: 6,
-    }, // --- NEW: Tagline ---
-
-    tagline: {
-      type: String,
-      trim: true,
-      maxlength: 150,
-      default: "",
     },
-
-    businessLogo: {
+    ownerProfileImage: {
       type: String,
-      required: [true, "Business Logo is required for verification"],
       trim: true,
     },
     tradeLicenseNumber: {
@@ -64,20 +40,62 @@ const vendorSchema = new mongoose.Schema(
       type: String,
       required: [true, "Trade License copy is required"],
     },
-    vendorStatus: {
+    personalEmiratesIdNumber: {
       type: String,
-      enum: ["Pending", "Active", "Inactive"],
-      default: "Pending",
+      required: [true, "Personal Emirates ID Number is required."],
+      trim: true,
+    },
+    emiratesIdCopy: {
+      type: String,
+      required: [true, "Emirates ID Copy is required."],
+    },
+    businessName: {
+      type: String,
+      required: [true, "Business Name is required for vendor listing"],
+      unique: true,
+      trim: true,
+    },
+    slug: {
+      type: String,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    tagline: {
+      type: String,
+      trim: true,
+      maxlength: 120,
+      default: "",
+    },
+    businessLogo: {
+      type: String,
+      required: [true, "Business Logo is required for verification"],
+      trim: true,
+    },
+    businessDescription: {
+      type: String,
+      required: [true, "Business description is required"],
+      trim: true,
+      minlength: 50,
+      maxlength: 1000,
+    },
+    whatsAppNumber: {
+      type: String,
+      required: [true, "WhatsApp Number is required"],
+      trim: true,
+    },
+    pricingStartingFrom: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
 
     mainCategory: {
-      // Change type from single ObjectId to an ARRAY of ObjectIds
       type: [mongoose.Schema.Types.ObjectId],
-      ref: "Category", // References the Category model
+      ref: "Category",
       required: [true, "At least one Main Category is required"],
       validate: {
         validator: function (v) {
-          // Ensures the array is not empty
           return v && v.length > 0;
         },
         message: "At least one Main Category is required.",
@@ -89,14 +107,54 @@ const vendorSchema = new mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
         ref: "SubCategory",
       },
-    ], // --- RENAMED: description -> aboutDescription ---
+    ],
 
-    aboutDescription: {
+    occasionsServed: {
+      type: [String],
+      enum: [
+        "baby-showers-gender-reveals",
+        "birthdays-anniversaries",
+        "corporate-events",
+        "cultural-festival-events",
+        "engagement-proposal-events",
+        "graduation-celebrations",
+        "private-parties",
+        "product-launches-brand-events",
+      ],
+      default: [],
+      index: true,
+    },
+
+    // Bundle & Subscription Fields
+    selectedBundle: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Bundle",
+      required: [true, "A bundle must be selected."],
+    },
+
+    subscriptionStatus: {
       type: String,
-      required: [true, "About description is required"],
-      trim: true,
-      maxlength: 2000,
-    }, // --- UPDATED: Full Address Structure ---
+      enum: ["pending", "active", "expired"],
+      default: "pending",
+    },
+
+    subscriptionStartDate: {
+      type: Date,
+      default: null,
+    },
+
+    subscriptionEndDate: {
+      type: Date,
+      default: null,
+    },
+
+    // Custom features added by admin (beyond bundle features)
+    customFeatures: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
 
     address: {
       street: {
@@ -122,17 +180,17 @@ const vendorSchema = new mongoose.Schema(
       country: {
         type: String,
         trim: true,
-        required: [true, "Country is required"],
+        default: "UAE",
       },
       zipCode: {
         type: String,
         trim: true,
         default: "",
-      }, // For map integration if needed
+      },
       coordinates: {
         latitude: { type: Number },
         longitude: { type: Number },
-      }, // NEW FIELD: Google Map Link
+      },
       googleMapLink: {
         type: String,
         trim: true,
@@ -140,66 +198,25 @@ const vendorSchema = new mongoose.Schema(
       },
     },
 
-    serviceAreaCoverage: {
+    websiteLink: {
       type: String,
-      required: [true, "Service Area Coverage is required (e.g., Dubai, UAE)"],
+      trim: true,
+      default: "",
     },
-
-    gallery: [
-      {
-        url: { type: String, required: true },
-        type: { type: String, enum: ["image", "video"], default: "image" },
-      },
-    ], // --- NEW: Packages Array ---
-
-    packages: [
-      {
-        name: {
-          type: String,
-          required: true,
-          trim: true,
-        },
-        description: {
-          type: String,
-          trim: true,
-          maxlength: 500,
-        },
-        priceStartsFrom: {
-          type: Number,
-          required: true,
-          min: 0,
-        },
-        features: [
-          {
-            type: String,
-            trim: true,
-          },
-        ],
-        isPopular: {
-          type: Boolean,
-          default: false,
-        },
-        image: {
-          type: String,
-          trim: true,
-        },
-      },
-    ],
-
-    pricingStartingFrom: {
-      type: Number,
-      default: 0,
+    facebookLink: {
+      type: String,
+      trim: true,
+      default: "",
     },
-    yearsOfExperience: {
-      type: Number,
-      min: 0,
-      default: 0,
-    }, 
-    socialMediaLinks: {
-      instagram: String,
-      facebook: String,
-      linkedin: String, // NEW FIELD
-      tiktok: String, // NEW FIELD
+    instagramLink: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    twitterLink: {
+      type: String,
+      trim: true,
+      default: "",
     },
     averageRating: {
       type: Number,
@@ -212,7 +229,7 @@ const vendorSchema = new mongoose.Schema(
       default: 0,
     },
     ratingBreakdown: {
-      1: { type: Number, default: 0 }, // count, not percentage
+      1: { type: Number, default: 0 },
       2: { type: Number, default: 0 },
       3: { type: Number, default: 0 },
       4: { type: Number, default: 0 },
@@ -222,9 +239,15 @@ const vendorSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    isVerified: {
+    isRecommended: {
       type: Boolean,
       default: false,
+      index: true,
+    },
+    vendorStatus: {
+      type: String,
+      enum: ["approved", "pending", "rejected"],
+      default: "pending",
     },
     role: {
       type: String,
@@ -235,16 +258,14 @@ const vendorSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// --- Pre-Save Hook for SLUG and OWNER PROFILE IMAGE Generation ---
 vendorSchema.pre("save", async function (next) {
   // 1. Slug Generation
   if (this.isModified("businessName") || this.isNew) {
-    // Replace & with "and", remove extra spaces and non-url-safe chars
     let baseSlug = this.businessName
       .toLowerCase()
       .replace(/&/g, "and")
       .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, ""); // optional cleanup (remove special chars)
+      .replace(/[^a-z0-9-]/g, "");
 
     let slug = baseSlug;
     let count = 1;
@@ -265,8 +286,35 @@ vendorSchema.pre("save", async function (next) {
     this.ownerProfileImage = `https://ui-avatars.com/api/?background=random&color=fff&name=${formattedName}`;
   }
 
+  // 3. Password hashing
+  if (this.isModified("password")) {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+  }
+
   next();
 });
+
+// Check if subscription is currently active
+vendorSchema.methods.hasActiveSubscription = function () {
+  return (
+    this.subscriptionStatus === "active" &&
+    this.subscriptionEndDate &&
+    new Date() <= this.subscriptionEndDate
+  );
+};
+
+// Get all features (bundle + custom)
+vendorSchema.methods.getAllFeatures = async function () {
+  if (!this.selectedBundle) return [];
+
+  const Bundle = mongoose.model("Bundle");
+  const bundle = await Bundle.findById(this.selectedBundle).select("features");
+
+  if (!bundle) return this.customFeatures || [];
+
+  return [...(bundle.features || []), ...(this.customFeatures || [])];
+};
 
 const Vendor = mongoose.model("Vendor", vendorSchema);
 

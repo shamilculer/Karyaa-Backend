@@ -21,43 +21,42 @@ const BlogSchema = new Schema(
     content: {
       type: String,
       required: [true, "Blog content is required"],
-      // stores HTML or JSON from rich text editor
     },
 
     coverImage: {
       type: String,
       trim: true,
-      default: "https://placehold.co/1200x600?text=Blog+Cover",
+      required: [true, "Blog content is required"],
     },
-
-    category: {
-      type: String,
-      trim: true,
-      default: "General",
-    },
-
-    tags: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
 
     author: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Admin",
       required: [true, "Author is required"],
     },
 
     status: {
       type: String,
       enum: ["draft", "published"],
-      default: "draft",
+      default: "published",
       index: true,
     },
 
     publishedAt: {
       type: Date,
+    },
+
+    ctaText: {
+      type: String,
+      trim: true,
+      maxlength: 50,
+      default: "Contact Us",
+    },
+
+    ctaLink: {
+      type: String,
+      trim: true,
+      default: "/contact",
     },
 
     metaTitle: {
@@ -89,10 +88,11 @@ BlogSchema.pre("validate", async function (next) {
       .replace(/(^-|-$)+/g, "");
 
     let slug = baseSlug;
-    let count = 1;
+    let count = 1; // Check for existing slugs and append number if conflict
 
-    // Check for existing slugs and append number if conflict
-    while (await mongoose.models.Blog.findOne({ slug, _id: { $ne: this._id } })) {
+    while (
+      await mongoose.models.Blog.findOne({ slug, _id: { $ne: this._id } })
+    ) {
       slug = `${baseSlug}-${count++}`;
     }
 
@@ -103,7 +103,11 @@ BlogSchema.pre("validate", async function (next) {
 
 // --- Update publishedAt automatically when status changes to "published" ---
 BlogSchema.pre("save", function (next) {
-  if (this.isModified("status") && this.status === "published" && !this.publishedAt) {
+  if (
+    this.isModified("status") &&
+    this.status === "published" &&
+    !this.publishedAt
+  ) {
     this.publishedAt = Date.now();
   }
   next();

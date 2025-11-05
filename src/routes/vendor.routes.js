@@ -1,12 +1,15 @@
-import express from "express"
+import express from "express";
 import { 
     registerVendor, 
     loginVendor, 
-    getActiveVendors, 
     getSingleVendor,
     getVendorOptions,
-    getVendorsForComparison
+    getVendorsForComparison,
+    getVendorReviewStats,
+    getVendorCities,
+    getApprovedVendors,
 } from "../controllers/vendor.controller.js";
+import { verifyVendor } from "../middleware/verifyVendor.js"
 
 const router = express.Router();
 
@@ -15,6 +18,7 @@ const router = express.Router();
 // -------------------------------------------------------------------
 router.post('/auth/register', registerVendor);
 router.post('/auth/login', loginVendor);
+
 
 // -------------------------------------------------------------------
 // --- COMPARE VENDOR ROUTES (Must be BEFORE dynamic /:identifier) ---
@@ -25,10 +29,14 @@ router.get('/compare', getVendorsForComparison);
 // -------------------------------------------------------------------
 // --- PUBLIC VENDOR DATA ROUTES ---
 // -------------------------------------------------------------------
-router.get('/active', getActiveVendors);
+router.get('/active', getApprovedVendors);
+router.get('/review-stats/:vendorId', getVendorReviewStats);
 
 // IMPORTANT: This dynamic route MUST be LAST
 // Otherwise it will catch /options and /compare as identifiers
 router.get('/:identifier', getSingleVendor);
+
+
+router.get("/cities", getVendorCities)
 
 export default router;
