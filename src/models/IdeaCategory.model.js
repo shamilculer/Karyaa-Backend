@@ -1,4 +1,14 @@
+// models/IdeaCategory.js
 import mongoose from "mongoose";
+
+const generateSlug = (name) => {
+  if (!name) return null;
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+};
 
 const ideaCategorySchema = new mongoose.Schema(
   {
@@ -13,7 +23,6 @@ const ideaCategorySchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
     },
-
     coverImage: {
       type: String,
       trim: true,
@@ -25,18 +34,28 @@ const ideaCategorySchema = new mongoose.Schema(
   }
 );
 
-ideaCategorySchema.index({ slug: 1 });
-
 ideaCategorySchema.pre("save", function (next) {
   if (this.isModified("name")) {
-    this.slug = this.name
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
+    this.slug = generateSlug(this.name);
   }
   next();
 });
+
+ideaCategorySchema.pre(["findOneAndUpdate", "updateMany"], function (next) {
+  const update = this.getUpdate();
+  
+  if (update.name) {
+    update.slug = generateSlug(update.name);
+  }
+  
+  if (update.$set && update.$set.name) {
+    update.$set.slug = generateSlug(update.$set.name);
+  }
+  
+  next();
+});
+
+ideaCategorySchema.index({ slug: 1 });
 
 const IdeaCategory = mongoose.model("IdeaCategory", ideaCategorySchema);
 

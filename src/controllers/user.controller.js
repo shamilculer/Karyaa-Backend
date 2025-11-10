@@ -9,19 +9,19 @@ import bcrypt from "bcrypt";
 // @access  Public (Admin can create any role)
 // -------------------------
 export const createUser = async (req, res) => {
-  const { username, emailAddress, mobileNumber, location, password, role } =
-    req.body;
+  const { username, emailAddress, mobileNumber, location, password, role } = req.body;
 
   try {
-    // 1. Check if user already exists
+    // ✅ 1. Check if user already exists
     const doesUserExist = await User.exists({ emailAddress });
     if (doesUserExist) {
-      return res
-        .status(409)
-        .json({ message: "User with this email address already exists" });
+      return res.status(409).json({
+        success: false,
+        message: "User with this email address already exists",
+      });
     }
 
-    // 2. Set role: only allow admin to assign roles other than 'user'
+    // ✅ 2. Set role properly (only admins can elevate)
     let assignedRole = "user";
     if (role && req.user?.role === "admin") {
       if (["user", "vendor", "admin"].includes(role)) {
@@ -29,7 +29,7 @@ export const createUser = async (req, res) => {
       }
     }
 
-    // 3. Create the user
+    // ✅ 3. Create the user
     const newUser = new User({
       username,
       emailAddress,
@@ -44,31 +44,45 @@ export const createUser = async (req, res) => {
 
     await newUser.save();
 
-    // 4. Generate tokens
+    // ✅ 4. Generate tokens
     const { accessToken, refreshToken } = generateTokens(newUser);
 
+    // ✅ 5. Remove sensitive fields
     const userResponse = newUser.toObject();
     delete userResponse.password;
-    delete userResponse.savedVendors;
     delete userResponse.passwordChangedAt;
+    delete userResponse.savedVendors;
 
-    res.status(201).json({
+    // ✅ 6. Success response
+    return res.status(201).json({
+      success: true,
       message: "User registered successfully",
       user: userResponse,
       accessToken,
       refreshToken,
     });
+
   } catch (error) {
     console.error("Registration error:", error);
+
+    // ✅ 7. Handle Mongoose validation errors cleanly
     if (error.name === "ValidationError") {
       const messages = Object.values(error.errors).map((val) => val.message);
-      return res
-        .status(400)
-        .json({ success: false, message: messages.join(", ") });
+
+      return res.status(400).json({
+        success: false,
+        message: messages.join(", "),
+      });
     }
-    res.status(500).json({ message: "Failed to register user" });
+
+    // ✅ 8. Generic fallback for unknown server crashes
+    return res.status(500).json({
+      success: false,
+      message: "Failed to register user",
+    });
   }
 };
+
 
 // -------------------------
 // @desc    Login user
@@ -165,7 +179,7 @@ export const getSavedVendors = async (req, res) => {
     const user = await User.findById(userId).select("savedVendors").populate({
       path: "savedVendors",
       select:
-        "businessName slug aboutDescription businessLogo averageRating reviewCount pricingStartingFrom isSponsored address.city serviceAreaCoverage gallery",
+        "businessName slug businessDescription businessLogo averageRating reviewCount pricingStartingFrom isRecommended address.city",
     });
 
     if (!user) {

@@ -13,15 +13,17 @@ export const getPublishedBlogs = async (req, res) => {
     const limit = parseInt(req.query.limit) || 15;
     const search = req.query.search || "";
     const category = req.query.category;
+    const exclude = req.query.exclude;
 
     const query = { status: "published" };
     if (search) query.title = { $regex: search, $options: "i" };
     if (category) query.category = category;
+    if (exclude) query._id = { $ne: exclude };
 
     const total = await Blog.countDocuments(query);
 
     const blogs = await Blog.find(query)
-      .populate("author", "username profileImage")
+      .populate("author", "fullName")
       .sort({ publishedAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit);

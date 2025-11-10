@@ -9,7 +9,6 @@ import mongoose from "mongoose";
 export const getCategories = async (req, res) => {
   try {
     const categories = await Category.find()
-      .populate("vendors", "name")
       .populate("subCategories", "_id name slug");
 
     res.status(200).json({
@@ -37,7 +36,6 @@ export const getCategory = async (req, res) => {
     // If identifier is a valid MongoDB ObjectId, search by _id
     if (mongoose.Types.ObjectId.isValid(identifier)) {
       category = await Category.findById(identifier)
-        .populate("vendors", "name")
         .populate({
           path: "subCategories",
           select: "_id name slug mainCategory",
@@ -48,7 +46,6 @@ export const getCategory = async (req, res) => {
     // If not found yet, or identifier is not an ObjectId, search by slug
     if (!category) {
       category = await Category.findOne({ slug: identifier })
-        .populate("vendors", "name")
         .populate({
           path: "subCategories",
           select: "_id name slug mainCategory coverImage",

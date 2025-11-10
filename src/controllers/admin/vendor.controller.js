@@ -1,5 +1,4 @@
 import Vendor from "../../models/Vendor.model.js";
-import Bundle from "../../models/Bundle.model.js";
 
 // Get all vendors with pagination and filters (for admin table)
 export const getAllVendors = async (req, res) => {
@@ -9,8 +8,8 @@ export const getAllVendors = async (req, res) => {
       limit = 15,
       search = "",
       vendorStatus = "",
-      subscriptionStatus = "",
       city = "",
+      isInternational = "",
       sortBy = "createdAt",
       sortOrder = "desc",
     } = req.query;
@@ -20,8 +19,8 @@ export const getAllVendors = async (req, res) => {
     // Build match query for filters (non-search)
     const matchQuery = {};
     if (vendorStatus) matchQuery.vendorStatus = vendorStatus;
-    if (subscriptionStatus) matchQuery.subscriptionStatus = subscriptionStatus;
     if (city) matchQuery["address.city"] = city;
+    if (isInternational !== "") matchQuery.isInternational = isInternational === "true";
 
     // If no search, use simple query
     if (!search || search.trim() === "") {
@@ -29,7 +28,7 @@ export const getAllVendors = async (req, res) => {
 
       const vendors = await Vendor.find(matchQuery)
         .select(
-          "businessName businessLogo ownerName ownerProfileImage email phoneNumber address.city averageRating vendorStatus subscriptionStatus selectedBundle subscriptionStartDate subscriptionEndDate mainCategory createdAt"
+          "businessName businessLogo ownerName ownerProfileImage email phoneNumber address.city address.country isInternational averageRating vendorStatus selectedBundle subscriptionStartDate subscriptionEndDate mainCategory createdAt"
         )
         .populate("selectedBundle", "name price")
         .populate("mainCategory", "name")
@@ -49,9 +48,10 @@ export const getAllVendors = async (req, res) => {
         email: vendor.email,
         phoneNumber: vendor.phoneNumber,
         city: vendor.address?.city || "N/A",
+        country: vendor.address?.country || "N/A",
+        isInternational: vendor.isInternational,
         rating: vendor.averageRating || 0,
         vendorStatus: vendor.vendorStatus,
-        subscriptionStatus: vendor.subscriptionStatus,
         bundleName: vendor.selectedBundle?.name || "N/A",
         bundlePrice: vendor.selectedBundle?.price || 0,
         mainCategories:
@@ -117,6 +117,7 @@ export const getAllVendors = async (req, res) => {
             { ownerName: searchRegex },
             { email: searchRegex },
             { "address.city": searchRegex },
+            { "address.country": searchRegex },
             { "mainCategoryDocs.name": searchRegex },
             { "subCategoryDocs.name": searchRegex },
           ],
@@ -166,9 +167,10 @@ export const getAllVendors = async (req, res) => {
       email: vendor.email,
       phoneNumber: vendor.phoneNumber,
       city: vendor.address?.city || "N/A",
+      country: vendor.address?.country || "N/A",
+      isInternational: vendor.isInternational,
       rating: vendor.averageRating || 0,
       vendorStatus: vendor.vendorStatus,
-      subscriptionStatus: vendor.subscriptionStatus,
       bundleName: vendor.bundleInfo?.name || "N/A",
       bundlePrice: vendor.bundleInfo?.price || 0,
       mainCategories: vendor.mainCategoryNames?.join(", ") || "N/A",
@@ -214,12 +216,16 @@ export const getVendorById = async (req, res) => {
 
     // Get all features (bundle + custom)
     const allFeatures = await vendor.getAllFeatures();
+    
+    // Get total subscription duration
+    const subscriptionDuration = await vendor.getTotalSubscriptionDuration();
 
     res.status(200).json({
       success: true,
       data: {
         ...vendor.toObject(),
         allFeatures,
+        subscriptionDuration,
       },
     });
   } catch (error) {
@@ -227,31 +233,56 @@ export const getVendorById = async (req, res) => {
   }
 };
 
-// Update vendor status (approve/reject/pending)
+// Helper function to calculate subscription end date
+function calculateSubscriptionEndDate(startDate, duration, bonusPeriod = null) {
+  const start = new Date(startDate);
+  let endDate = new Date(start);
+
+  // Add base duration
+  switch (duration.unit) {
+    case "days":
+      endDate.setDate(endDate.getDate() + duration.value);
+      break;
+    case "months":
+      endDate.setMonth(endDate.getMonth() + duration.value);
+      break;
+    case "years":
+      endDate.setFullYear(endDate.getFullYear() + duration.value);
+      break;
+  }
+
+  // Add bonus period if exists
+  if (bonusPeriod && bonusPeriod.value) {
+    switch (bonusPeriod.unit) {
+      case "days":
+        endDate.setDate(endDate.getDate() + bonusPeriod.value);
+        break;
+      case "months":
+        endDate.setMonth(endDate.getMonth() + bonusPeriod.value);
+        break;
+      case "years":
+        endDate.setFullYear(endDate.getFullYear() + bonusPeriod.value);
+        break;
+    }
+  }
+
+  return endDate;
+}
+
+// Update vendor status (approve/reject/pending/expired)
 export const updateVendorStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { vendorStatus } = req.body;
 
-    if (!["approved", "pending", "rejected"].includes(vendorStatus)) {
+    if (!["approved", "pending", "rejected", "expired"].includes(vendorStatus)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid status. Must be 'approved', 'pending', or 'rejected'",
+        message: "Invalid status. Must be 'approved', 'pending', 'rejected', or 'expired'",
       });
-    } // 1. Determine the corresponding subscription status update
+    }
 
-    const updateFields = { vendorStatus };
-    let newSubscriptionStatus = null;
-
-    if (vendorStatus === "approved") {
-      // Setting vendor to approved, so set subscription to active
-      newSubscriptionStatus = "active";
-    } else if (vendorStatus === "pending") {
-      // Setting vendor to pending, so set subscription to pending (if not expired)
-      newSubscriptionStatus = "pending";
-    } // 2. Fetch the current vendor to check existing subscriptionStatus
-
-    const currentVendor = await Vendor.findById(id, "subscriptionStatus");
+    const currentVendor = await Vendor.findById(id).populate("selectedBundle");
 
     if (!currentVendor) {
       return res.status(404).json({
@@ -260,19 +291,32 @@ export const updateVendorStatus = async (req, res) => {
       });
     }
 
-    // Only update the subscription status if a new status was determined
-    // AND the current status is NOT 'expired' (since expired status should
-    // typically require a separate action to change).
-    if (
-      newSubscriptionStatus &&
-      currentVendor.subscriptionStatus !== "expired"
-    ) {
-      updateFields.subscriptionStatus = newSubscriptionStatus;
-    } // 3. Perform the update
+    const updateFields = { vendorStatus };
+
+    // If approving vendor, set subscription dates
+    if (vendorStatus === "approved" && currentVendor.vendorStatus !== "approved") {
+      const startDate = new Date();
+      updateFields.subscriptionStartDate = startDate;
+
+      // Calculate end date based on custom duration or bundle duration
+      const duration = await currentVendor.getTotalSubscriptionDuration();
+      
+      if (duration) {
+        const endDate = calculateSubscriptionEndDate(
+          startDate,
+          duration.base,
+          duration.bonus
+        );
+        updateFields.subscriptionEndDate = endDate;
+      }
+    }
+
+    // If setting to expired or rejected from approved, keep the dates but status changes
+    // The model hooks will handle count decrements automatically
 
     const vendor = await Vendor.findByIdAndUpdate(
       id,
-      updateFields, // Use the dynamically created object
+      updateFields,
       { new: true, runValidators: true }
     )
       .populate("selectedBundle")
@@ -287,12 +331,14 @@ export const updateVendorStatus = async (req, res) => {
     }
 
     const allFeatures = await vendor.getAllFeatures();
+    const subscriptionDuration = await vendor.getTotalSubscriptionDuration();
 
     res.status(200).json({
       success: true,
       data: {
         ...vendor.toObject(),
-        allFeatures
+        allFeatures,
+        subscriptionDuration,
       },
       message: `Vendor status updated to ${vendorStatus}`,
     });
@@ -300,13 +346,48 @@ export const updateVendorStatus = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-// Activate vendor subscription
-export const activateVendorSubscription = async (req, res) => {
+
+// Update vendor custom duration (admin override)
+export const updateVendorDuration = async (req, res) => {
   try {
     const { id } = req.params;
-    const { customDuration } = req.body; // Optional: override bundle duration
+    const { customDuration } = req.body;
 
-    const vendor = await Vendor.findById(id).populate("selectedBundle");
+    // Validate customDuration structure
+    if (customDuration) {
+      if (!customDuration.value || !customDuration.unit) {
+        return res.status(400).json({
+          success: false,
+          message: "customDuration must include 'value' and 'unit'",
+        });
+      }
+
+      if (!["days", "months", "years"].includes(customDuration.unit)) {
+        return res.status(400).json({
+          success: false,
+          message: "unit must be 'days', 'months', or 'years'",
+        });
+      }
+
+      // Validate bonusPeriod if provided
+      if (customDuration.bonusPeriod) {
+        if (!["days", "months", "years"].includes(customDuration.bonusPeriod.unit)) {
+          return res.status(400).json({
+            success: false,
+            message: "bonusPeriod unit must be 'days', 'months', or 'years'",
+          });
+        }
+      }
+    }
+
+    const vendor = await Vendor.findByIdAndUpdate(
+      id,
+      { customDuration },
+      { new: true, runValidators: true }
+    )
+      .populate("selectedBundle")
+      .populate("mainCategory")
+      .populate("subCategories");
 
     if (!vendor) {
       return res.status(404).json({
@@ -315,51 +396,32 @@ export const activateVendorSubscription = async (req, res) => {
       });
     }
 
-    if (!vendor.selectedBundle) {
-      return res.status(400).json({
-        success: false,
-        message: "Vendor has no bundle selected",
-      });
+    // Recalculate subscription end date if vendor is approved
+    if (vendor.vendorStatus === "approved" && vendor.subscriptionStartDate) {
+      const duration = await vendor.getTotalSubscriptionDuration();
+      
+      if (duration) {
+        const endDate = calculateSubscriptionEndDate(
+          vendor.subscriptionStartDate,
+          duration.base,
+          duration.bonus
+        );
+        vendor.subscriptionEndDate = endDate;
+        await vendor.save();
+      }
     }
 
-    const bundle = vendor.selectedBundle;
-    const startDate = new Date();
-    let endDate = new Date(startDate);
-
-    // Calculate end date based on bundle duration or custom
-    const duration = customDuration || bundle.duration;
-    switch (duration.unit) {
-      case "days":
-        endDate.setDate(endDate.getDate() + duration.value);
-        break;
-      case "months":
-        endDate.setMonth(endDate.getMonth() + duration.value);
-        break;
-      case "years":
-        endDate.setFullYear(endDate.getFullYear() + duration.value);
-        break;
-    }
-
-    vendor.subscriptionStatus = "active";
-    vendor.subscriptionStartDate = startDate;
-    vendor.subscriptionEndDate = endDate;
-
-    // Auto-set recommended if bundle includes it
-    if (bundle.includesRecommended) {
-      vendor.isRecommended = true;
-    }
-
-    // Update bundle subscribers count
-    await Bundle.findByIdAndUpdate(bundle._id, {
-      $inc: { subscribersCount: 1 },
-    });
-
-    await vendor.save();
+    const allFeatures = await vendor.getAllFeatures();
+    const subscriptionDuration = await vendor.getTotalSubscriptionDuration();
 
     res.status(200).json({
       success: true,
-      data: vendor,
-      message: `Subscription activated until ${endDate.toLocaleDateString()}`,
+      data: {
+        ...vendor.toObject(),
+        allFeatures,
+        subscriptionDuration,
+      },
+      message: "Custom duration updated successfully",
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -383,7 +445,10 @@ export const updateVendorFeatures = async (req, res) => {
       id,
       { customFeatures },
       { new: true, runValidators: true }
-    );
+    )
+      .populate("selectedBundle")
+      .populate("mainCategory")
+      .populate("subCategories");
 
     if (!vendor) {
       return res.status(404).json({
@@ -392,9 +457,14 @@ export const updateVendorFeatures = async (req, res) => {
       });
     }
 
+    const allFeatures = await vendor.getAllFeatures();
+
     res.status(200).json({
       success: true,
-      data: vendor,
+      data: {
+        ...vendor.toObject(),
+        allFeatures,
+      },
       message: "Custom features updated successfully",
     });
   } catch (error) {
@@ -407,7 +477,10 @@ export const toggleRecommended = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const vendor = await Vendor.findById(id);
+    const vendor = await Vendor.findById(id).populate("selectedBundle")
+    .populate("mainCategory")
+    .populate("subCategories");
+
 
     if (!vendor) {
       return res.status(404).json({

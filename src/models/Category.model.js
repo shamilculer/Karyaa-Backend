@@ -17,12 +17,11 @@ const categorySchema = new mongoose.Schema(
     },
 
     // Array of vendors included in this category
-    vendors: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Vendor",
-      },
-    ],
+    vendorCount: {
+      type: Number,
+      default: 0
+
+    },
 
     // Array of subcategories
     subCategories: [

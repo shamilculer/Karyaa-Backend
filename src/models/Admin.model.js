@@ -48,8 +48,8 @@ const adminSchema = new mongoose.Schema(
      */
     adminLevel: {
       type: String,
-      enum: ["super", "restricted"],
-      default: "restricted",
+      enum: ["admin", "moderator"],
+      default: "moderator",
       index: true,
     },
 
@@ -58,7 +58,7 @@ const adminSchema = new mongoose.Schema(
      * The items mapped directly from your sidebar
      */
     accessControl: {
-      dashboard: { type: Boolean, default: false },
+      dashboard: { type: Boolean, default: true },
       contentModeration: { type: Boolean, default: false },
       categoryManagement: { type: Boolean, default: false },
       vendorManagement: { type: Boolean, default: false },
@@ -66,8 +66,10 @@ const adminSchema = new mongoose.Schema(
       analyticsInsights: { type: Boolean, default: false },
       supportTickets: { type: Boolean, default: false },
       adManagement: { type: Boolean, default: false },
+      referralManagement: { type: Boolean, default: false },
       bundleManagement: { type: Boolean, default: false },
-      adminSettings: { type: Boolean, default: false },
+      adminUserSettings: { type: Boolean, default: false },
+      adminSettings: { type: Boolean, default: true },
     },
 
     isActive: {

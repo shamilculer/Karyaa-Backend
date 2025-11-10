@@ -32,6 +32,7 @@ export const getVendorGalleryItems = async (req, res) => {
       .sort({ orderIndex: 1, createdAt: -1 })
       .lean();
 
+
     return res.status(200).json({
       success: true,
       count: items.length,
@@ -49,6 +50,49 @@ export const getVendorGalleryItems = async (req, res) => {
 };
 
 
+export const getAllGalleryItems = async (req, res) => {
+  try {
+    // pagination params
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 30;
+    const skip = (page - 1) * limit;
+
+    // total count
+    const totalItems = await GalleryItem.countDocuments();
+
+    // fetch paginated results (url + orderIndex only)
+    const items = await GalleryItem.find()
+      .select("url orderIndex vendor")
+      .populate({
+        path: "vendor",
+        select: "businessName businessLogo slug",
+      })
+      .sort({ orderIndex: 1, createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      message: "Gallery items fetched successfully.",
+      items,
+      pagination: {
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+        currentPage: page,
+        limit,
+        hasNextPage: page * limit < totalItems,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching gallery items:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching gallery items.",
+    });
+  }
+};
 
 /**
  * Add one or more gallery items for a vendor

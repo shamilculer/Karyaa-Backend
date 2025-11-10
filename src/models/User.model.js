@@ -21,7 +21,7 @@ export const BaseUserSchemaDefinition = {
         unique: true,
         trim: true,
         match: [
-            /^(?:(?:\+|00)971)?(?:0)?(5[0-9]{8})$/,
+            /^\+?[0-9\s-()]{7,20}$/,
             'Please enter a valid UAE mobile number',
         ],
     },

@@ -29,7 +29,7 @@ export const postLead = async (req, res) => {
         }
 
         // 2. Simple validation (Mongoose schema provides full validation)
-        if (!vendorId || !fullName || !phoneNumber || !location || !eventType || !eventDate || !numberOfGuests) {
+        if (!vendorId || !fullName || !phoneNumber) {
             return res.status(400).json({ 
                 success: false, 
                 message: "Missing required fields: vendorId, full name, phone number, location, event type, event date, and number of guests are mandatory." 

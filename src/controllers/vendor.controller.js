@@ -1,10 +1,12 @@
 import Vendor from "../models/Vendor.model.js";
+import Bundle from "../models/Bundle.model.js";
 import { generateTokens } from "../utils/index.js";
 import SubCategory from "../models/SubCategory.model.js";
 import Category from "../models/Category.model.js";
 import mongoose from "mongoose";
 import { getCoordinatesFromAddress } from "../utils/fetchCordinates.js";
 import GalleryItem from "../models/GalleryItem.model.js";
+import bcrypt from "bcrypt"
 
 // -------------------------------------------------------------------
 // --- Vendor Registration (POST /api/vendors/register) ---
@@ -21,6 +23,7 @@ export const registerVendor = async (req, res) => {
     email,
     phoneNumber,
     password,
+    isInternational,
     tradeLicenseNumber,
     tradeLicenseCopy,
     personalEmiratesIdNumber,
@@ -33,19 +36,26 @@ export const registerVendor = async (req, res) => {
     pricingStartingFrom,
     mainCategory,
     subCategories,
-    occasionsServed, 
+    occasionsServed,
     selectedBundle,
-    address, // Contains the structured address fields
+    address,
     websiteLink,
     facebookLink,
     instagramLink,
     twitterLink,
   } = req.body;
 
+
   try {
-    const existingVendor = await Vendor.findOne({
-      $or: [{ email }, { tradeLicenseNumber }],
-    });
+    // Check for existing vendor conflicts
+    const conflictQuery = { $or: [{ email }] };
+    
+    // Only check tradeLicenseNumber if vendor is not international
+    if (!isInternational && tradeLicenseNumber) {
+      conflictQuery.$or.push({ tradeLicenseNumber });
+    }
+
+    const existingVendor = await Vendor.findOne(conflictQuery);
 
     if (existingVendor) {
       let message =
@@ -58,11 +68,9 @@ export const registerVendor = async (req, res) => {
         message =
           "Your email and Trade License Number are both already registered with an existing vendor account.";
       } else if (existingVendor.email === email) {
-        // SPECIFIC EMAIL CONFLICT
         message =
           "The email address you entered is already registered. Please use a different email or log in.";
       } else if (existingVendor.tradeLicenseNumber === tradeLicenseNumber) {
-        // SPECIFIC TRADE LICENSE CONFLICT
         message =
           "The Trade License Number you entered is already registered with another account.";
       }
@@ -73,21 +81,50 @@ export const registerVendor = async (req, res) => {
       });
     }
 
-    // --- ⭐️ NEW COORDINATE FETCHING LOGIC ---
+    const selectedBundleDoc = await Bundle.findById(selectedBundle);
+
+
+    if (!selectedBundleDoc) {
+      return res.status(400).json({
+        success: false,
+        message: "The selected bundle does not exist.",
+      });
+    }
+
+    if (selectedBundleDoc.status !== "active") {
+      return res.status(400).json({
+        success: false,
+        message: "The selected bundle is currently not available.",
+      });
+    }
+
+    // Check if bundle has reached capacity
+    if (selectedBundleDoc.hasReachedCapacity()) {
+      return res.status(400).json({
+        success: false,
+        message: `The selected bundle has reached its maximum capacity. Please choose a different bundle.`,
+      });
+    }
+
+    // Check if bundle is available for international vendors
+    if (isInternational && !selectedBundleDoc.isAvailableForInternational) {
+      return res.status(400).json({
+        success: false,
+        message: "The selected bundle is not available for international vendors.",
+      });
+    }
+
+    // Coordinate fetching logic
     let coordinates = address?.coordinates;
 
-    // 1. Prepare the final address object with the fixed country
     const finalAddress = {
       ...address,
-      country: "UAE", // Set the fixed country value
+      country: address?.country || (isInternational ? "" : "UAE"),
     };
 
-    // 2. Fetch coordinates using the structured address fields
-    // Only fetch if coordinates were not explicitly provided or if they are empty
+    // Fetch coordinates if not provided
     if (!coordinates || (!coordinates.latitude && !coordinates.longitude)) {
-      // Pass the final address object to the utility function
-      // NOTE: getCoordinatesFromAddress function must be imported or defined
-      const fetchedCoords = await getCoordinatesFromAddress(finalAddress); 
+      const fetchedCoords = await getCoordinatesFromAddress(finalAddress);
 
       if (fetchedCoords) {
         coordinates = fetchedCoords;
@@ -96,20 +133,20 @@ export const registerVendor = async (req, res) => {
       }
     }
 
-    // 3. Assign the fetched (or original) coordinates back to the final address object
     finalAddress.coordinates = coordinates;
-    // --- END COORDINATE LOGIC ---
 
+    // Create new vendor
     const newVendor = new Vendor({
       ownerName,
       ownerProfileImage,
       email,
       phoneNumber,
       password,
-      tradeLicenseNumber,
-      tradeLicenseCopy,
-      personalEmiratesIdNumber,
-      emiratesIdCopy,
+      isInternational: isInternational || false,
+      tradeLicenseNumber: !isInternational ? tradeLicenseNumber : undefined,
+      tradeLicenseCopy: !isInternational ? tradeLicenseCopy : undefined,
+      personalEmiratesIdNumber: !isInternational ? personalEmiratesIdNumber : undefined,
+      emiratesIdCopy: !isInternational ? emiratesIdCopy : undefined,
       businessName,
       businessLogo,
       tagline,
@@ -118,12 +155,9 @@ export const registerVendor = async (req, res) => {
       pricingStartingFrom,
       mainCategory,
       subCategories,
-      // ⭐️ NEW FIELD INCLUDED HERE
-      occasionsServed, 
+      occasionsServed,
       selectedBundle,
-      address: finalAddress, // ⭐️ Updated with fetched coordinates
-
-      //Social Links
+      address: finalAddress,
       websiteLink,
       facebookLink,
       instagramLink,
@@ -132,7 +166,6 @@ export const registerVendor = async (req, res) => {
 
     const vendor = await newVendor.save();
 
-    // 4. Respond with a clear success message
     res.status(201).json({
       success: true,
       message:
@@ -142,6 +175,7 @@ export const registerVendor = async (req, res) => {
         businessName: vendor.businessName,
         email: vendor.email,
         vendorStatus: vendor.vendorStatus,
+        isInternational: vendor.isInternational,
       },
     });
   } catch (error) {
@@ -186,15 +220,16 @@ export const loginVendor = async (req, res) => {
         });
     }
 
-    if (vendor.vendorStatus !== "Active") {
+    if (vendor.vendorStatus !== "approved") {
       return res.status(403).json({
         success: false,
         message: `Account status is ${vendor.vendorStatus}. Please wait for admin approval.`,
       });
     }
 
-    // TODO: replace this with bcrypt.compare(password, vendor.password)
-    const isMatch = password === vendor.password;
+
+    // TODO: replace this with 
+    const isMatch = bcrypt.compare(password, vendor.password);
     if (!isMatch) {
       return res
         .status(400)
@@ -232,224 +267,233 @@ export const loginVendor = async (req, res) => {
 
 
 export const getApprovedVendors = async (req, res) => {
-    // 1. Pagination Setup
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 30;
-    const skip = (page - 1) * limit;
+  // 1. Pagination Setup
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 30;
+  const skip = (page - 1) * limit;
 
-    // 2. Destructure Query Parameters
-    const {
-        search,
-        mainCategory,
-        subCategory,
-        minPrice,
-        maxPrice,
-        location,
-        isSponsored,
-        isRecommended,
-        rating,
-        sort,
-        occasion, // <-- New Query Parameter
-    } = req.query;
+  // 2. Destructure Query Parameters
+  const {
+      search,
+      mainCategory,
+      subCategory,
+      minPrice,
+      maxPrice,
+      location,
+      isSponsored,
+      isRecommended,
+      rating,
+      sort,
+      occasion,
+  } = req.query;
 
-    let filterClauses = [{ vendorStatus: "approved" }];
 
-    // ---------------------------------------------------
-    // --- A. Search and Filtering Logic ---
-    // ---------------------------------------------------
+  let filterClauses = [{ vendorStatus: "approved" }];
 
-    // SEARCH
-    if (search) {
-        const searchRegex = new RegExp(search, "i");
+  // ---------------------------------------------------
+  // --- A. Search and Filtering Logic ---
+  // ---------------------------------------------------
+
+  // SEARCH
+  if (search) {
+      const searchRegex = new RegExp(search, "i");
+      filterClauses.push({
+          $or: [
+              { businessName: { $regex: searchRegex } },
+              { "address.city": { $regex: searchRegex } },
+          ],
+      });
+  }
+
+  // ✅ LOCATION (UAE CITY or INTERNATIONAL)
+  if (location) {
+    if (location.toLowerCase() === "international") {
+        filterClauses.push({ isInternational: true });
+    } else {
+        const locRegex = new RegExp(`${location}`, "i");
         filterClauses.push({
             $or: [
-                { businessName: { $regex: searchRegex } },
-                { "address.city": { $regex: searchRegex } },
-            ],
+                { "address.city": locRegex },
+                { "address.area": locRegex },
+                { "address.street": locRegex },
+            ]
         });
     }
+}
 
-    // LOCATION
-    if (location) {
-        filterClauses.push({ "address.city": new RegExp(`^${location}$`, "i") });
-    }
+  // MAIN CATEGORY
+  if (mainCategory) {
+      try {
+          const mainCategoryDoc = await Category.findOne({ slug: mainCategory })
+              .select("_id")
+              .lean();
 
-    // MAIN CATEGORY (Logic relies on Mongoose models being imported)
-    if (mainCategory) {
-        try {
-            const mainCategoryDoc = await Category.findOne({ slug: mainCategory })
-                .select("_id")
-                .lean();
+          if (mainCategoryDoc) {
+              filterClauses.push({ mainCategory: { $in: [mainCategoryDoc._id] } });
+          } else {
+              filterClauses.push({ _id: null });
+          }
+      } catch (error) {
+          console.error("Failed to translate MainCategory slug:", error);
+      }
+  }
 
-            if (mainCategoryDoc) {
-                filterClauses.push({ mainCategory: { $in: [mainCategoryDoc._id] } });
-            } else {
-                filterClauses.push({ _id: null });
-            }
-        } catch (error) {
-            console.error("Failed to translate MainCategory slug:", error);
-        }
-    }
+  // SUB-CATEGORIES
+  if (subCategory) {
+      const subSlugs = subCategory.split(",").filter(Boolean);
+      if (subSlugs.length > 0) {
+          try {
+              const subDocs = await SubCategory.find({
+                  slug: { $in: subSlugs },
+              })
+                  .select("_id")
+                  .lean();
 
-    // SUB-CATEGORIES (Logic relies on Mongoose models being imported)
-    if (subCategory) {
-        const subSlugs = subCategory.split(",").filter(Boolean);
-        if (subSlugs.length > 0) {
-            try {
-                const subDocs = await SubCategory.find({
-                    slug: { $in: subSlugs },
-                })
-                    .select("_id")
-                    .lean();
+              const subIds = subDocs.map((d) => d._id);
 
-                const subIds = subDocs.map((d) => d._id);
+              if (subIds.length > 0) {
+                  filterClauses.push({ subCategories: { $in: subIds } });
+              }
+          } catch (error) {
+              console.error("Failed to translate SubCategory slugs:", error);
+          }
+      }
+  }
 
-                if (subIds.length > 0) {
-                    filterClauses.push({ subCategories: { $in: subIds } });
-                }
-            } catch (error) {
-                console.error("Failed to translate SubCategory slugs:", error);
-            }
-        }
-    }
+  // PRICE FILTER
+  const priceFilter = {};
+  if (minPrice && !isNaN(minPrice)) priceFilter.$gte = parseFloat(minPrice);
+  if (maxPrice && !isNaN(maxPrice)) priceFilter.$lte = parseFloat(maxPrice);
+  if (Object.keys(priceFilter).length > 0) {
+      filterClauses.push({ pricingStartingFrom: priceFilter });
+  }
 
-    // PRICE FILTER
-    const priceFilter = {};
-    if (minPrice && !isNaN(minPrice)) priceFilter.$gte = parseFloat(minPrice);
-    if (maxPrice && !isNaN(maxPrice)) priceFilter.$lte = parseFloat(maxPrice);
-    if (Object.keys(priceFilter).length > 0) {
-        filterClauses.push({ pricingStartingFrom: priceFilter });
-    }
+  // SPONSORED
+  if (isSponsored === "true") {
+      filterClauses.push({ isSponsored: true });
+  }
 
-    // SPONSORED
-    if (isSponsored === "true") {
-        filterClauses.push({ isSponsored: true });
-    }
+  // RECOMMENDED
+  if (isRecommended === "true") {
+      filterClauses.push({ isRecommended: true });
+  }
 
-    // RECOMMENDED
-    if (isRecommended === "true") {
-        filterClauses.push({ isRecommended: true });
-    }
+  // RATING
+  if (rating && !isNaN(rating)) {
+      filterClauses.push({ averageRating: { $gte: parseFloat(rating) } });
+  }
 
-    // RATING
-    if (rating && !isNaN(rating)) {
-        filterClauses.push({ averageRating: { $gte: parseFloat(rating) } });
-    }
-    
-    // 🌟 NEW: OCCASION FILTER
-    if (occasion && occasion !== "none") {
-        filterClauses.push({ occasionsServed: occasion });
-    }
+  if (occasion && occasion !== "none" && occasion !== "all") {
+    filterClauses.push({ occasionsServed: occasion });
+}
 
-    const query = { $and: filterClauses };
+  const query = { $and: filterClauses };
 
-    // ---------------------------------------------------
-    // --- B. Sorting Logic ---
-    // ---------------------------------------------------
-    let sortOptions = { createdAt: -1 };
+  // ---------------------------------------------------
+  // --- B. Sorting Logic ---
+  // ---------------------------------------------------
+  let sortOptions = { createdAt: -1 };
 
-    if (sort) {
-        switch (sort) {
-            case "rating-high":
-                sortOptions = { averageRating: -1, createdAt: -1 };
-                break;
-            case "rating-low":
-                sortOptions = { averageRating: 1, createdAt: -1 };
-                break;
-            case "price-low":
-                sortOptions = { pricingStartingFrom: 1, createdAt: -1 };
-                break;
-            case "price-high":
-                sortOptions = { pricingStartingFrom: -1, createdAt: -1 };
-                break;
-        }
-    }
+  if (sort) {
+      switch (sort) {
+          case "rating-high":
+              sortOptions = { averageRating: -1, createdAt: -1 };
+              break;
+          case "rating-low":
+              sortOptions = { averageRating: 1, createdAt: -1 };
+              break;
+          case "price-low":
+              sortOptions = { pricingStartingFrom: 1, createdAt: -1 };
+              break;
+          case "price-high":
+              sortOptions = { pricingStartingFrom: -1, createdAt: -1 };
+              break;
+      }
+  }
 
-    try {
-        const needsPagination = req.query.page !== undefined;
-        let totalVendors = 0;
-        let totalPages = 1;
+  try {
+      const needsPagination = req.query.page !== undefined;
+      let totalVendors = 0;
+      let totalPages = 1;
 
-        if (needsPagination) {
-            // Assuming 'Vendor' model is available
-            totalVendors = await Vendor.countDocuments(query);
-            totalPages = Math.ceil(totalVendors / limit);
-        }
+      if (needsPagination) {
+          totalVendors = await Vendor.countDocuments(query);
+          totalPages = Math.ceil(totalVendors / limit);
+      }
 
-        const vendors = await Vendor.find(query)
-            .select(
-                "businessName slug businessDescription businessLogo averageRating reviewCount pricingStartingFrom isSponsored isRecommended address.city"
-            )
-            .populate("mainCategory", "name slug")
-            .sort(sortOptions)
-            .skip(skip)
-            .limit(limit)
-            .lean();
+      const vendors = await Vendor.find(query)
+          .select(
+              "businessName slug businessDescription businessLogo averageRating reviewCount pricingStartingFrom isSponsored isRecommended address.city address.coordinates"
+          )
+          .populate("mainCategory", "name slug")
+          .sort(sortOptions)
+          .skip(skip)
+          .limit(limit)
+          .lean();
 
-        // ---------------------------------------------------
-        // --- C. Fetch and Attach Gallery Items ---
-        // ---------------------------------------------------
+      // ---------------------------------------------------
+      // --- C. Fetch and Attach Gallery Items ---
+      // ---------------------------------------------------
 
-        if (vendors.length > 0) {
-            const vendorIds = vendors.map(v => v._id);
+      if (vendors.length > 0) {
+          const vendorIds = vendors.map((v) => v._id);
 
-            // Assuming 'GalleryItem' model is available
-            const galleryItems = await GalleryItem.find({
-                vendor: { $in: vendorIds }
-            })
-            .select("url vendor isFeatured") 
-            .sort({ orderIndex: 1, createdAt: -1 })
-            .lean();
+          const galleryItems = await GalleryItem.find({
+              vendor: { $in: vendorIds },
+          })
+              .select("url vendor isFeatured")
+              .sort({ orderIndex: 1, createdAt: -1 })
+              .lean();
 
-            const galleryMap = galleryItems.reduce((acc, item) => {
-                const vendorId = item.vendor.toString();
-                if (!acc[vendorId]) {
-                    acc[vendorId] = [];
-                }
-                acc[vendorId].push({
-                    url: item.url,
-                    isFeatured: item.isFeatured,
-                });
-                return acc;
-            }, {});
-            
-            vendors.forEach(vendor => {
-                vendor.gallery = galleryMap[vendor._id.toString()] || [];
-            });
-        }
+          const galleryMap = galleryItems.reduce((acc, item) => {
+              const vendorId = item.vendor.toString();
+              if (!acc[vendorId]) {
+                  acc[vendorId] = [];
+              }
+              acc[vendorId].push({
+                  url: item.url,
+                  isFeatured: item.isFeatured,
+              });
+              return acc;
+          }, {});
 
-        // ---------------------------------------------------
-        // --- D. Response Handling ---
-        // ---------------------------------------------------
+          vendors.forEach((vendor) => {
+              vendor.gallery = galleryMap[vendor._id.toString()] || [];
+          });
+      }
 
-        if (!needsPagination) {
-            return res.status(200).json({
-                success: true,
-                message: `Limited list of ${vendors.length} approved vendors fetched with gallery.`,
-                data: vendors,
-            });
-        }
+      // ---------------------------------------------------
+      // --- D. Response Handling ---
+      // ---------------------------------------------------
 
-        return res.status(200).json({
-            success: true,
-            message: "Approved vendors fetched successfully with gallery.",
-            data: vendors,
-            pagination: {
-                totalVendors,
-                totalPages,
-                currentPage: page,
-                limit,
-                hasNextPage: page < totalPages,
-                hasPrevPage: page > 1,
-            },
-        });
-    } catch (error) {
-        console.error("Error fetching approved vendors:", error);
-        res.status(500).json({
-            success: false,
-            message: "Server error while fetching vendors.",
-        });
-    }
+      if (!needsPagination) {
+          return res.status(200).json({
+              success: true,
+              message: `Limited list of ${vendors.length} approved vendors fetched with gallery.`,
+              data: vendors,
+          });
+      }
+
+      return res.status(200).json({
+          success: true,
+          message: "Approved vendors fetched successfully with gallery.",
+          data: vendors,
+          pagination: {
+              totalVendors,
+              totalPages,
+              currentPage: page,
+              limit,
+              hasNextPage: page < totalPages,
+              hasPrevPage: page > 1,
+          },
+      });
+  } catch (error) {
+      console.error("Error fetching approved vendors:", error);
+      res.status(500).json({
+          success: false,
+          message: "Server error while fetching vendors.",
+      });
+  }
 };
 
 
@@ -475,7 +519,7 @@ export const getSingleVendor = async (req, res) => {
     }
 
     // Add the required status filter
-    query.vendorStatus = "Active";
+    query.vendorStatus = "approved";
 
     const vendor = await Vendor.findOne(query)
       .select("-password -tradeLicenseCopy -tempUploadToken -__v")
@@ -484,7 +528,7 @@ export const getSingleVendor = async (req, res) => {
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: "Vendor not found or is not currently active.",
+        message: "Vendor not found or is not currently approved.",
       });
     }
 
@@ -509,10 +553,18 @@ export const getSingleVendor = async (req, res) => {
  */
 export const getVendorOptions = async (req, res) => {
   try {
-    const options = await Vendor.find({ vendorStatus: "Active" })
-      .select("slug businessName")
-      .sort({ businessName: 1 }) // Sort alphabetically for better UX
-      .lean(); // Faster retrieval
+    const { q, limit = 50 } = req.query; // Default limit to 50
+
+    let filter = { vendorStatus: "approved" };
+    if (q) {
+      filter.businessName = { $regex: q, $options: 'i' };
+    }
+
+    const options = await Vendor.find(filter)
+      .select("slug businessName businessLogo")
+      .sort({ businessName: 1 })
+      .limit(parseInt(limit)) // Apply limit
+      .lean();
 
     return res.status(200).json({ success: true, data: options });
   } catch (error) {
@@ -533,8 +585,6 @@ export const getVendorOptions = async (req, res) => {
 export const getVendorsForComparison = async (req, res) => {
   const slugsQuery = req.query.slugs;
 
-  console.log("📥 Received slugs query:", slugsQuery);
-  console.log("📥 Query params:", req.query);
 
   if (!slugsQuery) {
     return res.status(200).json({ success: true, data: [] });
@@ -554,12 +604,10 @@ export const getVendorsForComparison = async (req, res) => {
       .select("slug businessName vendorStatus")
       .lean();
 
-    console.log("🔍 Found ALL vendors (any status):", allVendors);
-
     // Now get active ones
     const vendors = await Vendor.find({
       slug: { $in: slugs },
-      vendorStatus: "Active",
+      vendorStatus: "approved",
     })
       .select({
         slug: 1,
@@ -567,19 +615,18 @@ export const getVendorsForComparison = async (req, res) => {
         businessLogo: 1,
         pricingStartingFrom: 1,
         averageRating: 1,
-        isSponsored: 1,
+        isRecommended: 1,
         "address.city": 1,
         "address.country": 1,
         mainCategory: 1,
-        serviceAreaCoverage: 1,
+        subCategories: 1,
         reviewCount: 1,
-        gallery: 1,
         _id: 1,
       })
       .populate({ path: "mainCategory", select: "name slug" })
+      .populate({ path: "subCategories", select: "name slug" })
       .lean();
 
-    console.log("✅ Found ACTIVE vendors:", vendors);
 
     const orderedVendors = slugs
       .map((slug) => vendors.find((v) => v.slug === slug))

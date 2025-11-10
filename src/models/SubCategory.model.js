@@ -14,12 +14,11 @@ const subCategorySchema = new mongoose.Schema(
       trim: true,
       unique: true,
     },
-    vendors: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Vendor",
-      },
-    ],
+    vendorCount: {
+      type: Number,
+      default: 0
+
+    },
     mainCategory: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",

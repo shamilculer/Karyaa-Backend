@@ -32,33 +32,18 @@ const leadSchema = new mongoose.Schema(
         // Event details
         location: {
             type: String,
-            required: [true, "Event location is required"],
             trim: true,
         },
         eventType: {
             type: String,
-            required: [true, "Event type is required"],
-            enum: [
-                "wedding",
-                "birthday",
-                "corporate",
-                "anniversary",
-                "baby_shower",
-                "engagement",
-                "gala",
-                "meeting",
-                "other",
-            ], // Matches your select options
         },
         eventDate: {
             // Storing as a String (ISO Date string or 'YYYY-MM-DD') to align with your form input type="date"
             type: String, 
-            required: [true, "Event date is required"],
             trim: true,
         },
         numberOfGuests: {
             type: String,
-            required: [true, "Number of guests is required"],
             trim: true,
         },
 

@@ -1,5 +1,5 @@
 import express from "express";
-import { loginAdmin } from "../../controllers/admin/admin.controller.js";
+import { createAdmin, deleteAdmin, getAllAdmins, loginAdmin, toggleAdminStatus, updateAdminAccessControl } from "../../controllers/admin/admin.controller.js";
 import {
   addCategory,
   addSubCategory,
@@ -19,7 +19,7 @@ import {
   getBlogPost,
   toggleBlogStatus,
 } from "../../controllers/admin/adminBlog.controller.js";
-import { getBrandDetails, updateBrandDetails } from "../../controllers/admin/brandDetails.controller.js";
+import { updateBrandDetails } from "../../controllers/admin/brandDetails.controller.js";
 import { verifyToken } from "../../middleware/verifyToken.js";
 import { deleteTicket, getAllSupportTickets, updateTicketStatus } from "../../controllers/admin/tickets.controller.js";
 import {
@@ -29,8 +29,16 @@ import {
   deleteBundle,
   toggleBundleStatus
 } from "../../controllers/admin/bundle.controller.js"
-import { createIdea, deleteIdea, updateIdea } from "../../controllers/admin/idea.controller.js";
-import { activateVendorSubscription, getAllVendors, getVendorById, toggleRecommended, updateVendorFeatures, updateVendorStatus } from "../../controllers/admin/vendor.controller.js";
+import { createIdea, createIdeaCategory, deleteIdea, updateIdea, updateIdeaCategory } from "../../controllers/admin/idea.controller.js";
+import {
+  getAllVendors,
+  getVendorById,
+  toggleRecommended,
+  updateVendorDuration,
+  updateVendorFeatures,
+  updateVendorStatus
+} from "../../controllers/admin/vendor.controller.js";
+import { createBanner, deleteBanner, getAllBanners, toggleStatus, updateBanner } from "../../controllers/admin/adBanner.controller.js";
 
 const router = express.Router();
 
@@ -55,7 +63,6 @@ router.get("/blog/:slugOrId", verifyToken, getBlogPost);
 router.delete("/blog/delete", verifyToken, deleteBlogs);
 router.patch("/blog/toggle-status", verifyToken, toggleBlogStatus);
 
-router.get("/brand-details", getBrandDetails);
 router.put("/brand-details", updateBrandDetails);
 
 
@@ -74,13 +81,27 @@ router.delete("/bundles/delete/:id", verifyToken, deleteBundle)
 router.post("/ideas/new", verifyToken, createIdea)
 router.put("/ideas/:id", verifyToken, updateIdea)
 router.delete("/ideas/delete/:id", verifyToken, deleteIdea);
+router.put("/ideas/category/:id/update", verifyToken, updateIdeaCategory)
+router.post("/ideas/category/new", verifyToken, createIdeaCategory)
 
 
 router.get("/vendors/all", verifyToken, getAllVendors);
 router.get("/vendors/:id", verifyToken, getVendorById)
 router.put("/vendors/:id/status", verifyToken, updateVendorStatus);
-router.put("/vendors/:id/subscription", verifyToken, activateVendorSubscription)
 router.put("/vendors/:id/features", verifyToken, updateVendorFeatures)
 router.put("/vendors/:id/toggle-recommendation", verifyToken, toggleRecommended)
+router.patch("/vendors/:id/duration", updateVendorDuration);
+
+router.get("/ad-banner/all", verifyToken, getAllBanners);
+router.put("/ad-banner/:id", verifyToken, updateBanner);
+router.put("/ad-banner/:id/status", verifyToken, toggleStatus)
+router.delete("/ad-banner/:id/delete", verifyToken, deleteBanner)
+router.post("/ad-banner/new", createBanner);
+
+router.get("/admins/all", verifyToken, getAllAdmins)
+router.post("/admins/new", verifyToken, createAdmin)
+router.put("/admins/:id/status", verifyToken, toggleAdminStatus)
+router.delete("/admins/:id/delete", verifyToken, deleteAdmin)
+router.put("/admins/:id/access-control", verifyToken, updateAdminAccessControl)
 
 export default router;

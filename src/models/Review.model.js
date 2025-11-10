@@ -9,7 +9,6 @@ const reviewSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Vendor",
             required: [true, "Vendor ID is required for the review"],
-            index: true,
         },
         user: {
             type: mongoose.Schema.Types.ObjectId,

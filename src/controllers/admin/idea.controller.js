@@ -1,4 +1,5 @@
 import Idea from "../../models/Idea.model.js";
+import IdeaCategory from "../../models/IdeaCategory.model.js";
 
 /**
  * @desc Create a new idea
@@ -59,12 +60,12 @@ export const updateIdea = async (req, res) => {
 
     // Check if the user is authorized (e.g., the submittedBy user or an Admin)
     if (!req.user || req.user.role !== "admin") {
-        return res.status(403).json({
-            success: false,
-            message: "Access denied. Only admins can update ideas.",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only admins can update ideas.",
+      });
     }
-    
+
     // Use updates directly. Mongoose ignores extra fields and validates existing ones.
     const idea = await Idea.findByIdAndUpdate(id, updates, {
       new: true,
@@ -104,10 +105,10 @@ export const deleteIdea = async (req, res) => {
 
     // Check if the user is authorized
     if (!req.user || req.user.role !== "admin") {
-        return res.status(403).json({
-            success: false,
-            message: "Access denied. Only admins can delete ideas.",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only admins can delete ideas.",
+      });
     }
 
     const idea = await Idea.findByIdAndDelete(id);
@@ -129,5 +130,85 @@ export const deleteIdea = async (req, res) => {
       success: false,
       message: "Failed to delete idea",
     });
+  }
+};
+
+
+export const updateIdeaCategory = async (req, res) => {
+  try {
+
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only admins can delete ideas.",
+      });
+    }
+    const { id } = req.params;
+    const { name, coverImage } = req.body;
+
+    if (!name || !id) {
+      return res.status(400).json({ success: false, message: "Category ID and name are required." });
+    }
+
+    const updateFields = {
+      name,
+      coverImage: coverImage || "", // Allow coverImage to be cleared or updated
+    };
+
+    const updatedCategory = await IdeaCategory.findByIdAndUpdate(
+      id,
+      { $set: updateFields },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedCategory) {
+      return res.status(404).json({ success: false, message: "Category not found." });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Category "${updatedCategory.name}" updated successfully.`,
+      data: updatedCategory,
+    });
+
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ success: false, message: "A category with this name or slug already exists." });
+    }
+    console.error("Error updating idea category:", error);
+    return res.status(500).json({ success: false, message: "Server error during update." });
+  }
+};
+
+
+export const createIdeaCategory = async (req, res) => {
+  try {
+      if (!req.user || req.user.role !== "admin") {
+          return res.status(403).json({ success: false, message: "Access denied. Only admins can create categories." });
+      }
+
+      const { name, coverImage } = req.body;
+      
+      if (!name) {
+          return res.status(400).json({ success: false, message: "Category name is required." });
+      }
+
+      const newCategory = await IdeaCategory.create({
+          name: name.trim(),
+          coverImage: coverImage || "",
+      });
+
+      res.status(201).json({
+          success: true,
+          data: newCategory,
+          message: `Category "${newCategory.name}" created successfully.`,
+      });
+
+  } catch (error) {
+      if (error.code === 11000) {
+          return res.status(409).json({ success: false, message: "A category with this name or slug already exists." });
+      }
+      console.error("Error creating idea category:", error);
+      res.status(500).json({ success: false, message: "Server error during creation." });
   }
 };

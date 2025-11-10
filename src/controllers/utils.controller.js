@@ -84,3 +84,54 @@ export const refreshAccessToken = async (req, res) => {
     });
   }
 };
+
+
+export const getCurrentAdminData = async (req, res) => {
+  const adminId = req.params.adminId; 
+
+  if (!adminId) {
+      return res.status(401).json({ 
+          success: false, 
+          message: "Authentication failed. No admin ID found in request." 
+      });
+  }
+
+  try {
+      const admin = await Admin.findById(adminId)
+          .select("fullName profileImage role email adminLevel accessControl isActive accesControl"); 
+
+
+      if (!admin) {
+          return res.status(404).json({ 
+              success: false, 
+              message: "Admin account not found." 
+          });
+      }
+      
+      // 🟢 RESTRICTED ADMIN RESPONSE PAYLOAD (Map Mongoose document to a simple object)
+      const adminResponse = {
+          id: admin._id, 
+          fullName: admin.fullName,
+          profileImage: admin.profileImage,
+          role: admin.role,
+          email: admin.email,
+          adminLevel: admin.adminLevel,
+          accessControl: admin.accessControl, 
+          isActive: admin.isActive,
+      };
+      
+      // Return the fresh, filtered admin object
+      return res.status(200).json({
+          success: true,
+          admin: adminResponse,
+          message: "Fresh admin data retrieved successfully."
+      });
+
+  } catch (error) {
+      console.error("Error fetching current admin data:", error);
+      return res.status(500).json({ 
+          success: false, 
+          message: "Server error while retrieving admin data." 
+      });
+  }
+};

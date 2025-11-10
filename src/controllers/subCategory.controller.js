@@ -49,7 +49,6 @@ export const getSubcategories = async (req, res) => {
 
     const subcategories = await SubCategory.find(query)
       .populate("mainCategory", "name slug")
-      .populate("vendors", "name slug") // include more vendor info if needed
       // .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -77,14 +76,12 @@ export const getSubCategory = async (req, res) => {
     if (mongoose.Types.ObjectId.isValid(identifier)) {
       subcategory = await SubCategory.findById(identifier)
         .populate("mainCategory", "name slug")
-        .populate("vendors", "name slug");
     }
 
     // If not found by ID or identifier is not an ObjectId, try slug
     if (!subcategory) {
       subcategory = await SubCategory.findOne({ slug: identifier })
         .populate("mainCategory", "name slug")
-        .populate("vendors", "name slug");
     }
 
     if (!subcategory) {
