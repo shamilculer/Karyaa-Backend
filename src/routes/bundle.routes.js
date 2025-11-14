@@ -1,10 +1,17 @@
 import express from "express"
-import { getBundlesForRegistration } from "../controllers/bundle.controller.js"
+import {
+    getAllActiveBundles,
+    getBundlesForRegistration,
+    getVendorSubscriptionStatus,
+    sendBundleEnquiry
+} from "../controllers/bundle.controller.js"
+import { verifyVendor } from "../middleware/verifyVendor.js"
 
 const router = express.Router()
 
 router.get("/registration-options", getBundlesForRegistration);
+router.get("/active", verifyVendor, getAllActiveBundles);
+router.post("/enquiry", verifyVendor, sendBundleEnquiry);
+router.get("/status", verifyVendor, getVendorSubscriptionStatus)
 
 export default router
-
-

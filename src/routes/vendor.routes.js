@@ -8,6 +8,8 @@ import {
     getVendorReviewStats,
     getVendorCities,
     getApprovedVendors,
+    updateVendor,
+    getVendorProfileForEdit,
 } from "../controllers/vendor.controller.js";
 import { verifyVendor } from "../middleware/verifyVendor.js"
 
@@ -25,6 +27,10 @@ router.post('/auth/login', loginVendor);
 // -------------------------------------------------------------------
 router.get('/options', getVendorOptions); 
 router.get('/compare', getVendorsForComparison);
+
+
+router.get("/profile", verifyVendor, getVendorProfileForEdit)
+router.put("/:vendorId", verifyVendor, updateVendor)
 
 // -------------------------------------------------------------------
 // --- PUBLIC VENDOR DATA ROUTES ---

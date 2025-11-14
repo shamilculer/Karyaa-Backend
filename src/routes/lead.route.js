@@ -1,12 +1,18 @@
 import express from "express";
 import { 
-    postLead
+    deleteLead,
+    getVendorLeads,
+    postLead,
+    updateLeadStatus
 } from "../controllers/lead.controller.js";
-import { verifyToken } from "../middleware/verifyToken.js";
+import { verifyVendor } from "../middleware/verifyVendor.js"
 
 const router = express.Router();
 
 // Route to handle lead submission
-router.post("/new", verifyToken, postLead);
+router.post("/new", postLead);
+router.get("/vendor", verifyVendor, getVendorLeads)
+router.patch("/status", verifyVendor, updateLeadStatus)
+router.delete("/delete", verifyVendor, deleteLead)
 
 export default router;

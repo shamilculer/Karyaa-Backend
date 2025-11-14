@@ -247,6 +247,7 @@ export const loginVendor = async (req, res) => {
       email: vendor.emailAddress,
       slug: vendor.slug,
       tagline: vendor.tagline,
+      bundle: vendor.selectedBundle
     };
 
     return res.status(200).json({
@@ -522,7 +523,7 @@ export const getSingleVendor = async (req, res) => {
     query.vendorStatus = "approved";
 
     const vendor = await Vendor.findOne(query)
-      .select("-password -tradeLicenseCopy -tempUploadToken -__v")
+      .select("-password -tradeLicenseCopy -tempUploadToken -__v -customFeatures -customDuration -subscriptionEndDate -subscriptionStartDate -selectedBundle -emiratesIdCopy -personalEmiratesIdNumber -tradeLicenseNumber")
       .populate("subCategories");
 
     if (!vendor) {
@@ -694,5 +695,127 @@ export const getVendorCities = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+export const getVendorProfileForEdit = async (req, res) => {
+  const vendorId = req.user.id; 
+  console.log("Fetching profile for vendor ID:", vendorId);
+  
+  try {
+      const vendor = await Vendor.findById(vendorId)
+          .select("-password -__v -tempUploadToken -selectedBundle -subscriptionStartDate -subscriptionEndDate -customDuration -customFeatures -vendorStatus -role -isRecommended -isSponsored -ratingBreakdown -reviewCount -averageRating") 
+          .populate("mainCategory", "name slug")
+          .populate("subCategories", "name slug");
+      
+      if (!vendor) {
+          return res.status(404).json({
+              success: false,
+              message: "Vendor profile not found.",
+          });
+      }
+      
+      res.status(200).json({
+          success: true,
+          message: "Vendor profile data fetched for editing.",
+          data: vendor,
+      });
+  } catch (error) {
+      console.error(`Error fetching vendor profile for ID ${vendorId}:`, error);
+      res.status(500).json({
+          success: false,
+          message: "Server error while fetching vendor profile.",
+      });
+  }
+};
+
+
+export const updateVendor = async (req, res) => {
+  const vendorId = req.user.id; 
+  
+  const updateData = { ...req.body };
+  
+
+  if (updateData.password) {
+      delete updateData.password;
+      console.warn(`Attempted to update password via general update route for vendor ID: ${vendorId}. Action blocked.`);
+  }
+
+  delete updateData.vendorStatus; 
+  delete updateData.role; 
+  
+  const isInternational = updateData.isInternational !== undefined ? updateData.isInternational : req.user.isInternational;
+
+  if (isInternational) {
+      updateData.tradeLicenseNumber = undefined;
+      updateData.tradeLicenseCopy = undefined;
+      updateData.personalEmiratesIdNumber = undefined;
+      updateData.emiratesIdCopy = undefined;
+  }
+
+
+  try {
+      let coordinates;
+      let finalAddress = updateData.address;
+
+      if (finalAddress) {
+          coordinates = finalAddress.coordinates;
+          
+          finalAddress.country = finalAddress.country || (isInternational ? "" : "UAE");
+          
+          if (!coordinates || (!coordinates.latitude && !coordinates.longitude)) {
+              const fetchedCoords = await getCoordinatesFromAddress(finalAddress);
+
+              if (fetchedCoords) {
+                  coordinates = fetchedCoords;
+              } else {
+                  console.warn(`Geocoding failed for the provided address for vendor ${vendorId}.`);
+              }
+          }
+
+          finalAddress.coordinates = coordinates;
+          updateData.address = finalAddress; // Update the main object with the new address structure
+      }
+
+
+      const updatedVendor = await Vendor.findByIdAndUpdate(
+          vendorId,
+          { $set: updateData },
+          { new: true, runValidators: true }
+      )
+      .select("businessName businessLogo role slug tagline selectedBundle") 
+
+      if (!updatedVendor) {
+          return res.status(404).json({
+              success: false,
+              message: "Vendor not found.",
+          });
+      }
+
+      // 5. Send success response
+      res.status(200).json({
+          success: true,
+          message: "Vendor profile updated successfully.",
+          data: updatedVendor,
+      });
+
+  } catch (error) {
+      console.error(`Vendor update failed for ID ${vendorId}:`, error);
+
+      // Handle Mongoose Validation Errors
+      if (error.name === "ValidationError") {
+          const messages = Object.values(error.errors).map((val) => val.message);
+          return res.status(400).json({
+              success: false,
+              message: `Validation Error: ${messages.join(", ")}`,
+          });
+      }
+
+      // Handle other errors (e.g., Database/Server Errors)
+      res.status(500).json({
+          success: false,
+          message: "System Error: Failed to update vendor profile.",
+      });
   }
 };

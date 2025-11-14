@@ -39,6 +39,7 @@ import {
   updateVendorStatus
 } from "../../controllers/admin/vendor.controller.js";
 import { createBanner, deleteBanner, getAllBanners, toggleStatus, updateBanner } from "../../controllers/admin/adBanner.controller.js";
+import { deleteReferrals, getReferrals, updateReferralStatus } from "../../controllers/referral.controller.js";
 
 const router = express.Router();
 
@@ -101,7 +102,12 @@ router.post("/ad-banner/new", createBanner);
 router.get("/admins/all", verifyToken, getAllAdmins)
 router.post("/admins/new", verifyToken, createAdmin)
 router.put("/admins/:id/status", verifyToken, toggleAdminStatus)
-router.delete("/admins/:id/delete", verifyToken, deleteAdmin)
+router.delete("/admins/:id/delete", verifyToken, deleteAdmin);
 router.put("/admins/:id/access-control", verifyToken, updateAdminAccessControl)
+
+router.get("/referrals", verifyToken, getReferrals)
+router.patch("/referrals/status", verifyToken, updateReferralStatus)
+router.delete("/referrals/delete", verifyToken, deleteReferrals);
+
 
 export default router;

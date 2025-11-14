@@ -37,7 +37,7 @@ const referralSchema = new mongoose.Schema(
         // --- AUTO-GENERATED REFERRAL CODE ---
         referralCode: {
             type: String,
-            unique: true, // Ensures no two referrals share the same code
+            unique: true,
             index: true,
         },
 
@@ -60,9 +60,8 @@ const referralSchema = new mongoose.Schema(
             trim: true,
         },
 
-        // --- Vendor Details (Array of Sub-Documents) ---
         vendors: {
-            type: [vendorSchema], // Stores an array of Vendor sub-documents
+            type: [vendorSchema],
             required: [true, "At least one vendor is required"],
             validate: {
                 validator: (v) => v.length > 0,
@@ -70,7 +69,6 @@ const referralSchema = new mongoose.Schema(
             },
         },
         
-        // --- Status/Tracking Fields (Optional) ---
         status: {
             type: String,
             enum: ["Pending", "Completed", "Canceled"],
@@ -80,21 +78,16 @@ const referralSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-// --- PRE-SAVE HOOK: Generate and ensure unique Referral Code ---
 referralSchema.pre('save', async function(next) {
     const doc = this;
 
-    // Only run if the document is new and the code hasn't been set
     if (doc.isNew && !doc.referralCode) {
         let unique = false;
         let code;
 
-        // Loop until a unique code is found
         while (!unique) {
             code = generateReferralCode(8); 
             
-            // Check if a document with this code already exists
-            // We use 'mongoose.models.Referral' here in case the model hasn't been exported yet
             const existingReferral = await mongoose.models.Referral.findOne({ referralCode: code });
             
             if (!existingReferral) {
