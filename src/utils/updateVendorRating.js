@@ -1,4 +1,4 @@
-import Vendor from "../models/Vendor.model.js";
+import Vendor from "../models/Vendor.model.js"
 import Review from "../models/Review.model.js"; 
 
 /**
@@ -8,29 +8,37 @@ import Review from "../models/Review.model.js";
  */
 export const updateVendorRating = async (vendorId) => {
     try {
-        // Fetch all approved reviews for that vendor
         const approvedReviews = await Review.find({
             vendor: vendorId,
             status: "Approved",
         }).select('rating');
-
+        
         const reviewCount = approvedReviews.length;
         const ratingBreakdown = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }; 
-
+        
         approvedReviews.forEach((r) => {
             const ratingKey = r.rating.toString();
             ratingBreakdown[ratingKey] = (ratingBreakdown[ratingKey] || 0) + 1;
         });
-
+        
         const totalRatingSum = approvedReviews.reduce((sum, r) => sum + r.rating, 0);
-        const averageRating = reviewCount > 0 ? totalRatingSum / reviewCount : 0;
-
-        // Update Vendor model
-        await Vendor.findByIdAndUpdate(vendorId, {
-            averageRating: averageRating.toFixed(1),
-            reviewCount,
-            ratingBreakdown,
-        }, { new: true });
+        
+        // ✅ Calculate average and round to nearest 0.5
+        const rawAverage = reviewCount > 0 ? totalRatingSum / reviewCount : 0;
+        const averageRating = Math.round(rawAverage * 2) / 2;
+        
+        // ✅ Store as regular number - formatting will be handled by virtual field
+        await Vendor.findByIdAndUpdate(
+            vendorId, 
+            {
+                averageRating: averageRating,  // Store as 4, 4.5, 3.5, etc.
+                reviewCount,
+                ratingBreakdown,
+            }, 
+            { new: true }
+        );
+        
+        console.log(`✅ Updated vendor ${vendorId} rating to ${averageRating}`);
         
     } catch (err) {
         console.error("Error updating vendor rating:", err);

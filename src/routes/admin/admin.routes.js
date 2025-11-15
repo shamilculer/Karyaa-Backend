@@ -40,6 +40,7 @@ import {
 } from "../../controllers/admin/vendor.controller.js";
 import { createBanner, deleteBanner, getAllBanners, toggleStatus, updateBanner } from "../../controllers/admin/adBanner.controller.js";
 import { deleteReferrals, getReferrals, updateReferralStatus } from "../../controllers/referral.controller.js";
+import { deleteContent, getAllContent,upsertContent } from "../../controllers/admin/pages.controller.js";
 
 const router = express.Router();
 
@@ -108,6 +109,11 @@ router.put("/admins/:id/access-control", verifyToken, updateAdminAccessControl)
 router.get("/referrals", verifyToken, getReferrals)
 router.patch("/referrals/status", verifyToken, updateReferralStatus)
 router.delete("/referrals/delete", verifyToken, deleteReferrals);
+
+// Admin routes
+router.get("/content", verifyToken, getAllContent);
+router.put("/content/:key", verifyToken, upsertContent);
+router.delete("/content/:key", verifyToken, deleteContent);
 
 
 export default router;

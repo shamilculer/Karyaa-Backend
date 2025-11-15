@@ -56,7 +56,7 @@ const referralSchema = new mongoose.Schema(
         },
         referrerPhone: {
             type: String,
-            required: false, // Optional
+            required: true,
             trim: true,
         },
 

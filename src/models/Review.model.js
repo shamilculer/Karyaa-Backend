@@ -1,5 +1,4 @@
 // models/Review.model.js
-
 import mongoose from "mongoose";
 import { updateVendorRating } from "../utils/updateVendorRating.js";
 
@@ -26,16 +25,12 @@ const reviewSchema = new mongoose.Schema(
             trim: true,
             required: [true, "Review comment is required"],
         },
-
-        // ✅ Admin Approval Field
         status: {
             type: String,
             enum: ["Pending", "Approved", "Rejected"],
             default: "Approved",
             index: true,
         },
-
-        // ✅ Flag system for moderation
         flaggedForRemoval: {
             type: Boolean,
             default: false,
@@ -47,20 +42,75 @@ const reviewSchema = new mongoose.Schema(
 
 reviewSchema.index({ vendor: 1, user: 1 }, { unique: true }); 
 
-// --- Mongoose Middleware Hooks for Vendor Stat Recalculation ---
-reviewSchema.post("save", async function () {
-    await updateVendorRating(this.vendor);
-});
-
-reviewSchema.pre("deleteOne", { document: true, query: false }, async function (next) {
-    this._vendorId = this.vendor; 
+// ✅ FIXED: Store previous state in pre-save hook
+reviewSchema.pre("save", async function (next) {
+    if (!this.isNew) {
+        // Store the previous values before the document is modified
+        const Review = mongoose.model("Review");
+        const previousReview = await Review.findById(this._id).lean();
+        this._previousState = previousReview;
+    }
     next();
 });
 
-reviewSchema.post("deleteOne", { document: true, query: false }, async function () {
-    await updateVendorRating(this._vendorId);
+// ✅ FIXED: Always trigger rating update after save
+reviewSchema.post("save", async function (doc) {
+    try {
+        // Check if this is a new review OR if status/rating changed
+        const isNewReview = !this._previousState;
+        const statusChanged = this._previousState && this._previousState.status !== doc.status;
+        const ratingChanged = this._previousState && this._previousState.rating !== doc.rating;
+
+        if (isNewReview || statusChanged || ratingChanged) {
+            await updateVendorRating(doc.vendor);
+        }
+    } catch (error) {
+        console.error("Error in review post-save hook:", error);
+    }
+});
+
+// ✅ FIXED: Handle deleteOne on document instance
+reviewSchema.pre("deleteOne", { document: true, query: false }, async function (next) {
+    try {
+        this._vendorToUpdate = this.vendor; // Store vendor ID for post hook
+    } catch (error) {
+        console.error("Error in review pre-deleteOne hook:", error);
+    }
+    next();
+});
+
+reviewSchema.post("deleteOne", { document: true, query: false }, async function (doc) {
+    try {
+        if (this._vendorToUpdate) {
+            await updateVendorRating(this._vendorToUpdate);
+        }
+    } catch (error) {
+        console.error("Error in review post-deleteOne hook:", error);
+    }
+});
+
+// ✅ FIXED: Handle findOneAndDelete (used by findByIdAndDelete)
+reviewSchema.pre("findOneAndDelete", async function (next) {
+    try {
+        const docToDelete = await this.model.findOne(this.getQuery()).lean();
+        if (docToDelete) {
+            this._vendorToUpdate = docToDelete.vendor;
+        }
+    } catch (error) {
+        console.error("Error in review pre-findOneAndDelete hook:", error);
+    }
+    next();
+});
+
+reviewSchema.post("findOneAndDelete", async function (doc) {
+    try {
+        if (this._vendorToUpdate) {
+            await updateVendorRating(this._vendorToUpdate);
+        }
+    } catch (error) {
+        console.error("Error in review post-findOneAndDelete hook:", error);
+    }
 });
 
 const Review = mongoose.model("Review", reviewSchema);
-
 export default Review;

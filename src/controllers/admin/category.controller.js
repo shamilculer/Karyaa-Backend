@@ -16,7 +16,6 @@ export const getCategories = async (req, res) => {
           as: "subCategories",
         },
       },
-
       // Project only required fields from subcategories
       {
         $project: {
@@ -32,13 +31,12 @@ export const getCategories = async (req, res) => {
                 _id: "$$sub._id",
                 name: "$$sub.name",
                 coverImage: "$$sub.coverImage",
-                vendorCount: { $size: "$$sub.vendors" },
+                vendorCount: "$$sub.vendorCount", // Use the vendorCount field from model
               },
             },
           },
         },
       },
-
       // Add total vendor count for the category
       {
         $addFields: {
@@ -48,13 +46,11 @@ export const getCategories = async (req, res) => {
         },
       },
     ]);
-
     res.status(200).json({
       success: true,
       count: categories.length,
       categories,
     });
-
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -99,12 +95,10 @@ export const addCategory = async (req, res) => {
 export const getCategoryById = async (req, res) => {
   try {
     const { id } = req.params;
-
     // Check if id is a valid ObjectId or use it as slug
     const matchCondition = mongoose.Types.ObjectId.isValid(id)
       ? { $or: [{ _id: new mongoose.Types.ObjectId(id) }, { slug: id }] }
       : { slug: id };
-
     const category = await Category.aggregate([
       {
         $match: matchCondition,
@@ -138,7 +132,7 @@ export const getCategoryById = async (req, res) => {
                 isPopular: "$$sub.isPopular",
                 isNewSub: "$$sub.isNewSub",
                 mainCategory: "$$sub.mainCategory",
-                vendorCount: { $size: "$$sub.vendors" },
+                vendorCount: "$$sub.vendorCount", // Use the vendorCount field from model
                 createdAt: "$$sub.createdAt",
                 updatedAt: "$$sub.updatedAt",
               },
@@ -155,14 +149,12 @@ export const getCategoryById = async (req, res) => {
         },
       },
     ]);
-
     if (!category || category.length === 0) {
       return res.status(404).json({
         success: false,
         message: "Category not found",
       });
     }
-
     res.status(200).json({
       success: true,
       category: category[0],

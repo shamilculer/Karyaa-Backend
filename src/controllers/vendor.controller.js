@@ -424,7 +424,7 @@ export const getApprovedVendors = async (req, res) => {
 
       const vendors = await Vendor.find(query)
           .select(
-              "businessName slug businessDescription businessLogo averageRating reviewCount pricingStartingFrom isSponsored isRecommended address.city address.coordinates"
+              "businessName slug businessDescription businessLogo address.city averageRating  pricingStartingFrom  isRecommended tagline address.coordinates"
           )
           .populate("mainCategory", "name slug")
           .sort(sortOptions)
@@ -504,13 +504,10 @@ export const getApprovedVendors = async (req, res) => {
  * @access Public
  */
 export const getSingleVendor = async (req, res) => {
-  // ... (Your existing getSingleVendor code here)
   const identifier = req.params.identifier; // This can be the slug or the MongoDB ID
-
   try {
     // Build the query: try to match by slug or by MongoDB ID
     const query = {};
-
     // 1. Check if the identifier looks like a MongoDB ID (24 hex characters)
     if (identifier.match(/^[0-9a-fA-F]{24}$/)) {
       query.$or = [{ slug: identifier }, { _id: identifier }];
@@ -518,25 +515,26 @@ export const getSingleVendor = async (req, res) => {
       // 2. Assume it's a slug if it doesn't look like an ID
       query.slug = identifier;
     }
-
     // Add the required status filter
     query.vendorStatus = "approved";
-
+    
     const vendor = await Vendor.findOne(query)
       .select("-password -tradeLicenseCopy -tempUploadToken -__v -customFeatures -customDuration -subscriptionEndDate -subscriptionStartDate -selectedBundle -emiratesIdCopy -personalEmiratesIdNumber -tradeLicenseNumber")
       .populate("subCategories");
-
+    
     if (!vendor) {
       return res.status(404).json({
         success: false,
         message: "Vendor not found or is not currently approved.",
       });
     }
-
+    
+    const vendorData = vendor.toJSON();
+    
     res.status(200).json({
       success: true,
       message: "Vendor fetched successfully.",
-      data: vendor,
+      data: vendorData, 
     });
   } catch (error) {
     console.error("Error fetching single vendor:", error);

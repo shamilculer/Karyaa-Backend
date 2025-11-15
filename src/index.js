@@ -21,6 +21,7 @@ import bundleRoutes from "./routes/bundle.routes.js"
 import bannerRoutes from "./routes/adBanner.routes.js"
 import brandDetailRoutes from "./routes/brandDetails.routes.js"
 import referralRoutes from "./routes/refferral.routes.js"
+import contentRoutes from "./routes/pages.routes.js"
 
 
 import bundleStatsRoute from "./routes/admin/analytics/bundleAnalytics.routes.js"
@@ -59,6 +60,8 @@ app.use('/api/v1/bundles', bundleRoutes)
 app.use("/api/v1/banners", bannerRoutes)
 app.use("/api/v1/brand-details", brandDetailRoutes);
 app.use("/api/v1/referrals", referralRoutes);
+app.use("/api/v1/content", contentRoutes);
+
 
 app.use('/api/v1/admin', adminRoutes)
 app.use('/api/v1/admin/analytics', bundleStatsRoute)
