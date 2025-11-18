@@ -35,6 +35,7 @@ const vendorSchema = mongoose.Schema(
             default: false,
             index: true,
         },
+        // UAE-Specific Fields (Required if not international)
         tradeLicenseNumber: {
             type: String,
             required: function () {
@@ -61,6 +62,19 @@ const vendorSchema = mongoose.Schema(
             type: String,
             required: function () {
                 return !this.isInternational;
+            },
+        },
+        // International-Specific Fields (Required if international)
+        businessLicenseCopy: {
+            type: String,
+            required: function () {
+                return this.isInternational;
+            },
+        },
+        passportOrIdCopy: {
+            type: String,
+            required: function () {
+                return this.isInternational;
             },
         },
         businessName: {
@@ -126,18 +140,21 @@ const vendorSchema = mongoose.Schema(
         occasionsServed: {
             type: [String],
             enum: [
-                "baby-showers-gender-reveals",
-                "birthdays-anniversaries",
-                "corporate-events",
-                "cultural-festival-events",
-                "engagement-proposal-events",
-                "graduation-celebrations",
-                "private-parties",
-                "product-launches-brand-events",
+              "wedding",
+              "engagement",
+              "proposal",
+              "baby-shower",
+              "gender-reveal",
+              "birthday",
+              "graduation",
+              "corporate-event",
+              "brand-launch",
+              "festivities",
+              "anniversary",
             ],
             default: [],
             index: true,
-        },
+          },
 
         // Bundle & Subscription Fields
         selectedBundle: {

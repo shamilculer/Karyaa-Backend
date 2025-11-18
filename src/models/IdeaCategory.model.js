@@ -1,4 +1,3 @@
-// models/IdeaCategory.js
 import mongoose from "mongoose";
 
 const generateSlug = (name) => {

@@ -57,6 +57,7 @@ export const getAllGalleryItems = async (req, res) => {
     const limit = parseInt(req.query.limit) || 30;
     const skip = (page - 1) * limit;
 
+
     // total count
     const totalItems = await GalleryItem.countDocuments();
 

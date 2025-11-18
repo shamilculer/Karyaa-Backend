@@ -17,185 +17,202 @@ import bcrypt from "bcrypt"
  * @access Public
  */
 export const registerVendor = async (req, res) => {
-  const {
-    ownerName,
-    ownerProfileImage,
-    email,
-    phoneNumber,
-    password,
-    isInternational,
-    tradeLicenseNumber,
-    tradeLicenseCopy,
-    personalEmiratesIdNumber,
-    emiratesIdCopy,
-    businessName,
-    businessLogo,
-    tagline,
-    businessDescription,
-    whatsAppNumber,
-    pricingStartingFrom,
-    mainCategory,
-    subCategories,
-    occasionsServed,
-    selectedBundle,
-    address,
-    websiteLink,
-    facebookLink,
-    instagramLink,
-    twitterLink,
-  } = req.body;
-
-
-  try {
-    // Check for existing vendor conflicts
-    const conflictQuery = { $or: [{ email }] };
-    
-    // Only check tradeLicenseNumber if vendor is not international
-    if (!isInternational && tradeLicenseNumber) {
-      conflictQuery.$or.push({ tradeLicenseNumber });
-    }
-
-    const existingVendor = await Vendor.findOne(conflictQuery);
-
-    if (existingVendor) {
-      let message =
-        "A vendor account already exists with the information provided.";
-
-      if (
-        existingVendor.email === email &&
-        existingVendor.tradeLicenseNumber === tradeLicenseNumber
-      ) {
-        message =
-          "Your email and Trade License Number are both already registered with an existing vendor account.";
-      } else if (existingVendor.email === email) {
-        message =
-          "The email address you entered is already registered. Please use a different email or log in.";
-      } else if (existingVendor.tradeLicenseNumber === tradeLicenseNumber) {
-        message =
-          "The Trade License Number you entered is already registered with another account.";
-      }
-
-      return res.status(400).json({
-        success: false,
-        message: message,
-      });
-    }
-
-    const selectedBundleDoc = await Bundle.findById(selectedBundle);
-
-
-    if (!selectedBundleDoc) {
-      return res.status(400).json({
-        success: false,
-        message: "The selected bundle does not exist.",
-      });
-    }
-
-    if (selectedBundleDoc.status !== "active") {
-      return res.status(400).json({
-        success: false,
-        message: "The selected bundle is currently not available.",
-      });
-    }
-
-    // Check if bundle has reached capacity
-    if (selectedBundleDoc.hasReachedCapacity()) {
-      return res.status(400).json({
-        success: false,
-        message: `The selected bundle has reached its maximum capacity. Please choose a different bundle.`,
-      });
-    }
-
-    // Check if bundle is available for international vendors
-    if (isInternational && !selectedBundleDoc.isAvailableForInternational) {
-      return res.status(400).json({
-        success: false,
-        message: "The selected bundle is not available for international vendors.",
-      });
-    }
-
-    // Coordinate fetching logic
-    let coordinates = address?.coordinates;
-
-    const finalAddress = {
-      ...address,
-      country: address?.country || (isInternational ? "" : "UAE"),
-    };
-
-    // Fetch coordinates if not provided
-    if (!coordinates || (!coordinates.latitude && !coordinates.longitude)) {
-      const fetchedCoords = await getCoordinatesFromAddress(finalAddress);
-
-      if (fetchedCoords) {
-        coordinates = fetchedCoords;
-      } else {
-        console.warn("Geocoding failed for the provided address.");
-      }
-    }
-
-    finalAddress.coordinates = coordinates;
-
-    // Create new vendor
-    const newVendor = new Vendor({
-      ownerName,
-      ownerProfileImage,
-      email,
-      phoneNumber,
-      password,
-      isInternational: isInternational || false,
-      tradeLicenseNumber: !isInternational ? tradeLicenseNumber : undefined,
-      tradeLicenseCopy: !isInternational ? tradeLicenseCopy : undefined,
-      personalEmiratesIdNumber: !isInternational ? personalEmiratesIdNumber : undefined,
-      emiratesIdCopy: !isInternational ? emiratesIdCopy : undefined,
-      businessName,
-      businessLogo,
-      tagline,
-      businessDescription,
-      whatsAppNumber,
-      pricingStartingFrom,
-      mainCategory,
-      subCategories,
-      occasionsServed,
-      selectedBundle,
-      address: finalAddress,
-      websiteLink,
-      facebookLink,
-      instagramLink,
-      twitterLink,
-    });
-
-    const vendor = await newVendor.save();
-
-    res.status(201).json({
-      success: true,
-      message:
-        "Success! Your registration has been submitted and is now pending admin approval. We will notify you via email shortly.",
-      vendor: {
-        _id: vendor._id,
-        businessName: vendor.businessName,
-        email: vendor.email,
-        vendorStatus: vendor.vendorStatus,
-        isInternational: vendor.isInternational,
-      },
-    });
-  } catch (error) {
-    console.error("Vendor registration failed:", error);
-    if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map((val) => val.message);
-      return res.status(400).json({
-        success: false,
-        message: `Validation Error: Please correct the following issues: ${messages.join(
-          ", "
-        )}`,
-      });
-    }
-    res.status(500).json({
-      success: false,
-      message:
-        "System Error: Registration failed due to a server issue. Please try again later.",
-    });
-  }
-};
+    const {
+      ownerName,
+      ownerProfileImage,
+      email,
+      phoneNumber,
+      password,
+      isInternational,
+      // UAE-specific fields
+      tradeLicenseNumber,
+      tradeLicenseCopy,
+      personalEmiratesIdNumber,
+      emiratesIdCopy,
+      // NEW: International-specific fields
+      businessLicenseCopy,
+      passportOrIdCopy,
+      // Common business fields
+      businessName,
+      businessLogo,
+      tagline,
+      businessDescription,
+      whatsAppNumber,
+      pricingStartingFrom,
+      mainCategory,
+      subCategories,
+      occasionsServed,
+      selectedBundle,
+      address,
+      websiteLink,
+      facebookLink,
+      instagramLink,
+      twitterLink,
+    } = req.body;
+  
+  
+    try {
+      // Check for existing vendor conflicts
+      const conflictQuery = { $or: [{ email }] };
+      
+      // Only check tradeLicenseNumber if vendor is not international
+      if (!isInternational && tradeLicenseNumber) {
+        conflictQuery.$or.push({ tradeLicenseNumber });
+      }
+      
+      // NOTE: We generally avoid checking for duplicates on international documents
+      // (like passport or business license copy URLs) as they may not be unique
+      // identifiers like a UAE Trade License Number, or we rely on the Mongoose 
+      // unique index check for Business Name (which is done on save).
+  
+      const existingVendor = await Vendor.findOne(conflictQuery);
+  
+      if (existingVendor) {
+        let message =
+          "A vendor account already exists with the information provided.";
+  
+        if (
+          existingVendor.email === email &&
+          existingVendor.tradeLicenseNumber === tradeLicenseNumber
+        ) {
+          message =
+            "Your email and Trade License Number are both already registered with an existing vendor account.";
+        } else if (existingVendor.email === email) {
+          message =
+            "The email address you entered is already registered. Please use a different email or log in.";
+        } else if (existingVendor.tradeLicenseNumber === tradeLicenseNumber) {
+          message =
+            "The Trade License Number you entered is already registered with another account.";
+        }
+  
+        return res.status(400).json({
+          success: false,
+          message: message,
+        });
+      }
+  
+      const selectedBundleDoc = await Bundle.findById(selectedBundle);
+  
+  
+      if (!selectedBundleDoc) {
+        return res.status(400).json({
+          success: false,
+          message: "The selected bundle does not exist.",
+        });
+      }
+  
+      if (selectedBundleDoc.status !== "active") {
+        return res.status(400).json({
+          success: false,
+          message: "The selected bundle is currently not available.",
+        });
+      }
+  
+      // Check if bundle has reached capacity
+      if (selectedBundleDoc.hasReachedCapacity()) {
+        return res.status(400).json({
+          success: false,
+          message: `The selected bundle has reached its maximum capacity. Please choose a different bundle.`,
+        });
+      }
+  
+      // Check if bundle is available for international vendors
+      if (isInternational && !selectedBundleDoc.isAvailableForInternational) {
+        return res.status(400).json({
+          success: false,
+          message: "The selected bundle is not available for international vendors.",
+        });
+      }
+  
+      // Coordinate fetching logic
+      let coordinates = address?.coordinates;
+  
+      const finalAddress = {
+        ...address,
+        country: address?.country || (isInternational ? "" : "UAE"),
+      };
+  
+      // Fetch coordinates if not provided
+      if (!coordinates || (!coordinates.latitude && !coordinates.longitude)) {
+        const fetchedCoords = await getCoordinatesFromAddress(finalAddress);
+  
+        if (fetchedCoords) {
+          coordinates = fetchedCoords;
+        } else {
+          console.warn("Geocoding failed for the provided address.");
+        }
+      }
+  
+      finalAddress.coordinates = coordinates;
+  
+      // Create new vendor
+      const newVendor = new Vendor({
+        ownerName,
+        ownerProfileImage,
+        email,
+        phoneNumber,
+        password,
+        isInternational: isInternational || false,
+  
+        // Conditionally set UAE fields
+        tradeLicenseNumber: !isInternational ? tradeLicenseNumber : undefined,
+        tradeLicenseCopy: !isInternational ? tradeLicenseCopy : undefined,
+        personalEmiratesIdNumber: !isInternational ? personalEmiratesIdNumber : undefined,
+        emiratesIdCopy: !isInternational ? emiratesIdCopy : undefined,
+  
+        // Conditionally set International fields
+        businessLicenseCopy: isInternational ? businessLicenseCopy : undefined,
+        passportOrIdCopy: isInternational ? passportOrIdCopy : undefined,
+        
+        businessName,
+        businessLogo,
+        tagline,
+        businessDescription,
+        whatsAppNumber,
+        pricingStartingFrom,
+        mainCategory,
+        subCategories,
+        occasionsServed,
+        selectedBundle,
+        address: finalAddress,
+        websiteLink,
+        facebookLink,
+        instagramLink,
+        twitterLink,
+      });
+  
+      const vendor = await newVendor.save();
+  
+      res.status(201).json({
+        success: true,
+        message:
+          "Success! Your registration has been submitted and is now pending admin approval. We will notify you via email shortly.",
+        vendor: {
+          _id: vendor._id,
+          businessName: vendor.businessName,
+          email: vendor.email,
+          vendorStatus: vendor.vendorStatus,
+          isInternational: vendor.isInternational,
+        },
+      });
+    } catch (error) {
+      console.error("Vendor registration failed:", error);
+      if (error.name === "ValidationError") {
+        const messages = Object.values(error.errors).map((val) => val.message);
+        return res.status(400).json({
+          success: false,
+          message: `Validation Error: Please correct the following issues: ${messages.join(
+            ", "
+          )}`,
+        });
+      }
+      res.status(500).json({
+        success: false,
+        message:
+          "System Error: Registration failed due to a server issue. Please try again later.",
+      });
+    }
+  };
 
 // -------------------------------------------------------------------
 // --- Vendor Login (POST /api/vendors/login) ---
@@ -614,7 +631,7 @@ export const getVendorsForComparison = async (req, res) => {
         businessLogo: 1,
         pricingStartingFrom: 1,
         averageRating: 1,
-        isRecommended: 1,
+        occasionsServed: 1,
         "address.city": 1,
         "address.country": 1,
         mainCategory: 1,

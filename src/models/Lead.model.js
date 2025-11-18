@@ -30,6 +30,7 @@ const leadSchema = new Schema(
     email: {
       type: String,
       lowercase: true,
+      required: [true, "Email address is required"],
       trim: true,
     },
     location: {
@@ -42,6 +43,7 @@ const leadSchema = new Schema(
     message: {
       type: String,
       trim: true,
+      required: [true, "Message is required"],
       maxlength: 2000,
     },
     status: {
