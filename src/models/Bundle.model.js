@@ -44,10 +44,22 @@ const bundleSchema = mongoose.Schema(
       required: true,
       min: 0,
     },
+
+    // New field: prefers `isAddon` in code going forward.
+    isAddon: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    // Keep `isPopular` for backward compatibility with existing data/APIs.
+    // We sync it with `isAddon` on save so either field can be used during transition.
     isPopular: {
       type: Boolean,
       default: false,
+      index: true,
     },
+
     includesRecommended: {
       type: Boolean,
       default: false,
@@ -86,29 +98,36 @@ const bundleSchema = mongoose.Schema(
   }
 );
 
+// Indexes
 bundleSchema.index({ status: 1, displayOrder: 1 });
 
+// Methods
 bundleSchema.methods.hasReachedCapacity = function () {
   if (!this.maxVendors) return false; // Unlimited if null/undefined
   return this.subscribersCount >= this.maxVendors;
 };
 
-// Get available slots remaining
 bundleSchema.methods.getAvailableSlots = function () {
   if (!this.maxVendors) return null; // Unlimited
   return Math.max(0, this.maxVendors - this.subscribersCount);
 };
 
-// Pre-save validation to prevent exceeding max vendors
+
 bundleSchema.pre("save", function (next) {
-  if (this.maxVendors && this.subscribersCount > this.maxVendors) {
-    return next(
-      new Error(
-        `Subscribers count (${this.subscribersCount}) cannot exceed maximum vendors limit (${this.maxVendors})`
-      )
-    );
+  try {
+
+    if (this.maxVendors && this.subscribersCount > this.maxVendors) {
+      return next(
+        new Error(
+          `Subscribers count (${this.subscribersCount}) cannot exceed maximum vendors limit (${this.maxVendors})`
+        )
+      );
+    }
+
+    next();
+  } catch (err) {
+    next(err);
   }
-  next();
 });
 
 const Bundle = mongoose.model("Bundle", bundleSchema);

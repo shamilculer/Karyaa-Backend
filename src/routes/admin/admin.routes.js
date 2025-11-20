@@ -34,13 +34,14 @@ import {
   getAllVendors,
   getVendorById,
   toggleRecommended,
+  updateVendorDocuments,
   updateVendorDuration,
   updateVendorFeatures,
   updateVendorStatus
 } from "../../controllers/admin/vendor.controller.js";
 import { createBanner, deleteBanner, getAllBanners, toggleStatus, updateBanner } from "../../controllers/admin/adBanner.controller.js";
 import { deleteReferrals, getReferrals, updateReferralStatus } from "../../controllers/referral.controller.js";
-import { deleteContent, getAllContent,upsertContent } from "../../controllers/admin/pages.controller.js";
+import { bulkUpdateContent, deleteContent, getAllContent,getContentByKey,getLandingPageStructure,upsertContent } from "../../controllers/admin/pages.controller.js";
 
 const router = express.Router();
 
@@ -92,7 +93,8 @@ router.get("/vendors/:id", verifyToken, getVendorById)
 router.put("/vendors/:id/status", verifyToken, updateVendorStatus);
 router.put("/vendors/:id/features", verifyToken, updateVendorFeatures)
 router.put("/vendors/:id/toggle-recommendation", verifyToken, toggleRecommended)
-router.patch("/vendors/:id/duration", updateVendorDuration);
+router.patch("/vendors/:id/duration", verifyToken, updateVendorDuration);
+router.patch("/vendors/:id/documents", verifyToken, updateVendorDocuments);
 
 router.get("/ad-banner/all", verifyToken, getAllBanners);
 router.put("/ad-banner/:id", verifyToken, updateBanner);
@@ -112,6 +114,9 @@ router.delete("/referrals/delete", verifyToken, deleteReferrals);
 
 // Admin routes
 router.get("/content", verifyToken, getAllContent);
+router.get("/content/landing-page/structure", verifyToken, getLandingPageStructure);
+router.get("/content/:key", verifyToken, getContentByKey);
+router.put("/content/bulk-update", verifyToken, bulkUpdateContent);
 router.put("/content/:key", verifyToken, upsertContent);
 router.delete("/content/:key", verifyToken, deleteContent);
 

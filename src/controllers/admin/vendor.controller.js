@@ -503,3 +503,179 @@ export const toggleRecommended = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+export const updateVendorDocuments = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      // Document files
+      tradeLicenseCopy,
+      emiratesIdCopy,
+      businessLicenseCopy,
+      passportOrIdCopy,
+      // Document numbers
+      tradeLicenseNumber,
+      personalEmiratesIdNumber,
+    } = req.body;
+
+    // Find the vendor first
+    const vendor = await Vendor.findById(id);
+    
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    // Build update object
+    const updateFields = {};
+    
+    // Handle UAE vendor documents and numbers
+    if (!vendor.isInternational) {
+      // UAE document files
+      if (tradeLicenseCopy !== undefined) {
+        if (tradeLicenseCopy === "") {
+          return res.status(400).json({
+            success: false,
+            message: "Trade License Copy cannot be empty for UAE vendors",
+          });
+        }
+        updateFields.tradeLicenseCopy = tradeLicenseCopy;
+      }
+      
+      if (emiratesIdCopy !== undefined) {
+        if (emiratesIdCopy === "") {
+          return res.status(400).json({
+            success: false,
+            message: "Emirates ID Copy cannot be empty for UAE vendors",
+          });
+        }
+        updateFields.emiratesIdCopy = emiratesIdCopy;
+      }
+
+      // UAE document numbers
+      if (tradeLicenseNumber !== undefined) {
+        if (tradeLicenseNumber.trim() === "") {
+          return res.status(400).json({
+            success: false,
+            message: "Trade License Number cannot be empty for UAE vendors",
+          });
+        }
+        updateFields.tradeLicenseNumber = tradeLicenseNumber.trim();
+      }
+
+      if (personalEmiratesIdNumber !== undefined) {
+        if (personalEmiratesIdNumber.trim() === "") {
+          return res.status(400).json({
+            success: false,
+            message: "Emirates ID Number cannot be empty for UAE vendors",
+          });
+        }
+        updateFields.personalEmiratesIdNumber = personalEmiratesIdNumber.trim();
+      }
+
+      // Reject international fields if provided
+      if (businessLicenseCopy !== undefined || passportOrIdCopy !== undefined) {
+        return res.status(400).json({
+          success: false,
+          message: "International documents cannot be updated for UAE vendors",
+        });
+      }
+    } 
+    // Handle International vendor documents
+    else {
+      // International document files
+      if (businessLicenseCopy !== undefined) {
+        if (businessLicenseCopy === "") {
+          return res.status(400).json({
+            success: false,
+            message: "Business License Copy cannot be empty for international vendors",
+          });
+        }
+        updateFields.businessLicenseCopy = businessLicenseCopy;
+      }
+      
+      if (passportOrIdCopy !== undefined) {
+        if (passportOrIdCopy === "") {
+          return res.status(400).json({
+            success: false,
+            message: "Passport/ID Copy cannot be empty for international vendors",
+          });
+        }
+        updateFields.passportOrIdCopy = passportOrIdCopy;
+      }
+
+      // Reject UAE fields if provided
+      if (tradeLicenseCopy !== undefined || emiratesIdCopy !== undefined || 
+          tradeLicenseNumber !== undefined || personalEmiratesIdNumber !== undefined) {
+        return res.status(400).json({
+          success: false,
+          message: "UAE documents cannot be updated for international vendors",
+        });
+      }
+    }
+
+    // Check if there are any fields to update
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No document fields provided for update",
+      });
+    }
+
+    // Update the vendor
+    const updatedVendor = await Vendor.findByIdAndUpdate(
+      id,
+      updateFields,
+      { 
+        new: true, 
+        runValidators: true,
+        select: "businessName email isInternational tradeLicenseNumber personalEmiratesIdNumber tradeLicenseCopy emiratesIdCopy businessLicenseCopy passportOrIdCopy"
+      }
+    );
+
+    // Build response based on vendor type
+    const responseData = {
+      _id: updatedVendor._id,
+      businessName: updatedVendor.businessName,
+      email: updatedVendor.email,
+      isInternational: updatedVendor.isInternational,
+    };
+
+    if (!updatedVendor.isInternational) {
+      responseData.documents = {
+        tradeLicenseNumber: updatedVendor.tradeLicenseNumber || null,
+        personalEmiratesIdNumber: updatedVendor.personalEmiratesIdNumber || null,
+        tradeLicenseCopy: updatedVendor.tradeLicenseCopy || null,
+        emiratesIdCopy: updatedVendor.emiratesIdCopy || null,
+      };
+    } else {
+      responseData.documents = {
+        businessLicenseCopy: updatedVendor.businessLicenseCopy || null,
+        passportOrIdCopy: updatedVendor.passportOrIdCopy || null,
+      };
+    }
+
+    res.status(200).json({
+      success: true,
+      data: responseData,
+      message: "Vendor documents updated successfully",
+    });
+  } catch (error) {
+    console.error("Error updating vendor documents:", error);
+    
+    // Handle duplicate key error for trade license number
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "This Trade License Number is already registered",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: error.message || "An error occurred while updating vendor documents",
+    });
+  }
+};

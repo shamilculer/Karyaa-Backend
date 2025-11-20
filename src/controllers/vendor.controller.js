@@ -716,7 +716,6 @@ export const getVendorCities = async (req, res) => {
 
 export const getVendorProfileForEdit = async (req, res) => {
   const vendorId = req.user.id; 
-  console.log("Fetching profile for vendor ID:", vendorId);
   
   try {
       const vendor = await Vendor.findById(vendorId)

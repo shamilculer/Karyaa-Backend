@@ -23,6 +23,7 @@ export const getCategories = async (req, res) => {
           slug: 1,
           icon: 1,
           coverImage: 1,
+          vendorCount: 1, // ✅ ADD THIS LINE - Include category's own vendorCount
           subCategories: {
             $map: {
               input: "$subCategories",
@@ -31,16 +32,16 @@ export const getCategories = async (req, res) => {
                 _id: "$$sub._id",
                 name: "$$sub.name",
                 coverImage: "$$sub.coverImage",
-                vendorCount: "$$sub.vendorCount", // Use the vendorCount field from model
+                vendorCount: "$$sub.vendorCount",
               },
             },
           },
         },
       },
-      // Add total vendor count for the category
+      // Calculate total vendor count (sum of all subcategories)
       {
         $addFields: {
-          vendorCount: {
+          totalVendorCount: {
             $sum: "$subCategories.vendorCount",
           },
         },
