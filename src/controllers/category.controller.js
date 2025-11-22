@@ -71,3 +71,30 @@ export const getCategory = async (req, res) => {
     });
   }
 };
+
+// -------------------------------------------
+// @desc    Get categories with vendors only (for client-side)
+// @route   GET /api/categories/with-vendors
+// @access  Public
+// -------------------------------------------
+export const getCategoriesWithVendors = async (req, res) => {
+  try {
+    // Find categories with vendorCount > 0
+    const categories = await Category.find({ vendorCount: { $gt: 0 } })
+      .populate({
+        path: "subCategories",
+        select: "_id name slug vendorCount coverImage isPopular isNewSub",
+        // Only populate subcategories that have vendors
+        match: { vendorCount: { $gt: 0 } }
+      })
+      .select("_id name slug vendorCount coverImage subCategories");
+
+    res.status(200).json({
+      success: true,
+      count: categories.length,
+      categories,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

@@ -71,6 +71,17 @@ const BlogSchema = new Schema(
       maxlength: 160,
     },
 
+    seoKeywords: {
+      type: [String],
+      default: [],
+      validate: {
+        validator: function(v) {
+          return v.length <= 10;
+        },
+        message: 'Cannot have more than 10 SEO keywords'
+      }
+    },
+
     views: {
       type: Number,
       default: 0,

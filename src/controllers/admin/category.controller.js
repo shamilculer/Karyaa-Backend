@@ -7,7 +7,6 @@ import mongoose from "mongoose";
 export const getCategories = async (req, res) => {
   try {
     const categories = await Category.aggregate([
-      // Lookup subcategories
       {
         $lookup: {
           from: "subcategories",
@@ -16,14 +15,13 @@ export const getCategories = async (req, res) => {
           as: "subCategories",
         },
       },
-      // Project only required fields from subcategories
       {
         $project: {
           name: 1,
           slug: 1,
           icon: 1,
           coverImage: 1,
-          vendorCount: 1, // ✅ ADD THIS LINE - Include category's own vendorCount
+          vendorCount: 1,
           subCategories: {
             $map: {
               input: "$subCategories",
@@ -35,14 +33,6 @@ export const getCategories = async (req, res) => {
                 vendorCount: "$$sub.vendorCount",
               },
             },
-          },
-        },
-      },
-      // Calculate total vendor count (sum of all subcategories)
-      {
-        $addFields: {
-          totalVendorCount: {
-            $sum: "$subCategories.vendorCount",
           },
         },
       },
@@ -138,14 +128,6 @@ export const getCategoryById = async (req, res) => {
                 updatedAt: "$$sub.updatedAt",
               },
             },
-          },
-        },
-      },
-      // Add total vendor count for the category
-      {
-        $addFields: {
-          vendorCount: {
-            $sum: "$subCategories.vendorCount",
           },
         },
       },
