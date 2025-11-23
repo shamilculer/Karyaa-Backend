@@ -135,7 +135,7 @@ export const getVendorLeads = async (req, res) => {
 
 export const updateLeadStatus = async (req, res) => {
     try {
-        if (req.user.role !== "vendor" || !req.user.id) {
+        if (req.user.role !== "vendor" || req.user.role !== "admin" || !req.user.id) {
             return res.status(401).json({ 
                 success: false, 
                 message: "Authentication Required: You must be logged in as a vendor to update leads." 
@@ -232,7 +232,7 @@ export const updateLeadStatus = async (req, res) => {
 
 export const deleteLead = async (req, res) => {
     try {
-        if (req.user.role !== "vendor" || !req.user.id) {
+        if (req.user.role !== "vendor" || req.user.role !== "admin" || !req.user.id) {
             return res.status(401).json({ 
                 success: false, 
                 message: "Authentication Required: You must be logged in as a vendor to delete leads." 
@@ -304,6 +304,77 @@ export const deleteLead = async (req, res) => {
         res.status(500).json({ 
             success: false, 
             message: "Failed to delete lead(s) due to a server error." 
+        });
+    }
+};
+
+/**
+ * @desc Get all leads system-wide (Admin only)
+ * @route GET /api/v1/leads/admin/all
+ * @access Admin
+ */
+export const getAllLeads = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const skip = (page - 1) * limit;
+
+        const { search, status, vendorId } = req.query;
+
+        let query = {};
+
+        if (search) {
+            const searchRegex = new RegExp(search, 'i');
+            query.$or = [
+                { fullName: searchRegex },
+                { phoneNumber: searchRegex },
+                { email: searchRegex },
+                { message: searchRegex },
+                { referenceId: searchRegex },
+            ];
+        }
+
+        if (status && status !== 'All') {
+            query.status = status;
+        }
+
+        if (vendorId) {
+            query.vendor = new mongoose.Types.ObjectId(vendorId);
+        }
+
+        const leads = await Lead.find(query)
+            .populate({
+                path: "vendor",
+                select: "businessName email phoneNumber ownerName",
+            })
+            .populate({
+                path: "user",
+                select: "username email mobileNumber",
+            })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .exec();
+
+        const totalLeads = await Lead.countDocuments(query);
+
+        res.status(200).json({
+            success: true,
+            message: "All leads fetched successfully.",
+            data: leads,
+            pagination: {
+                totalItems: totalLeads,
+                totalPages: Math.ceil(totalLeads / limit),
+                currentPage: page,
+                pageSize: limit,
+            }
+        });
+
+    } catch (error) {
+        console.error("Error fetching all leads:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Failed to fetch leads due to a server error." 
         });
     }
 };

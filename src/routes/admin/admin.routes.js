@@ -42,6 +42,7 @@ import {
 import { createBanner, deleteBanner, getAllBanners, toggleStatus, updateBanner } from "../../controllers/admin/adBanner.controller.js";
 import { deleteReferrals, getReferrals, updateReferralStatus } from "../../controllers/referral.controller.js";
 import { bulkUpdateContent, deleteContent, getAllContent,getContentByKey,getLandingPageStructure,upsertContent } from "../../controllers/admin/pages.controller.js";
+import { adminGetAllLeads, adminUpdateLeadStatus, adminDeleteLead } from "../../controllers/admin/lead.controller.js";
 
 const router = express.Router();
 
@@ -121,6 +122,11 @@ router.get("/content/:key", verifyToken, getContentByKey);
 router.put("/content/bulk-update", verifyToken, bulkUpdateContent);
 router.put("/content/:key", verifyToken, upsertContent);
 router.delete("/content/:key", verifyToken, deleteContent);
+
+// Admin Lead Management Routes
+router.get("/leads", verifyToken, adminGetAllLeads);
+router.patch("/leads/status", verifyToken, adminUpdateLeadStatus);
+router.delete("/leads", verifyToken, adminDeleteLead);
 
 
 export default router;
