@@ -39,6 +39,7 @@ export const generateTokens = (account) => {
         username: account.fullName || account.name,
         role: account.role,
         email: account.email,
+        phoneNumber: account.phoneNumber,
         profileImage: account.profileImage,
         adminLevel: account.adminLevel,
         accessControl: account.accessControl

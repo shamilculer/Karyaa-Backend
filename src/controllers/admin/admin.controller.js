@@ -37,6 +37,7 @@ export const loginAdmin = async (req, res) => {
             profileImage: admin.profileImage,
             role: admin.role,
             email: admin.email,
+            phoneNumber: admin.phoneNumber,
             adminLevel: admin.adminLevel,
             accessControl: admin.accessControl
         };
@@ -510,6 +511,162 @@ export const updateAdminAccessControl = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "An error occurred while attempting to update admin permissions.",
+        });
+    }
+};
+
+// Update admin profile (name, email, phone number)
+export const updateAdminProfile = async (req, res) => {
+    if (!req.user || req.user.role !== "admin") {
+        return res.status(403).json({
+            success: false,
+            message: "Access denied. Only admins can update their profile.",
+        });
+    }
+
+    const { fullName, username, email, phoneNumber, profileImage } = req.body;
+    const adminId = req.user._id || req.user.id;
+
+    try {
+        // Check if email is being changed and if it's already taken
+        if (email) {
+            const existingAdmin = await Admin.findOne({ 
+                email, 
+                _id: { $ne: adminId } 
+            });
+
+            if (existingAdmin) {
+                return res.status(409).json({
+                    success: false,
+                    message: "This email is already in use by another admin.",
+                });
+            }
+        }
+
+        // Prepare update data
+        const updateData = {};
+        // Accept both fullName and username (username is what's in the token)
+        if (fullName) updateData.fullName = fullName;
+        if (username) updateData.fullName = username;
+        if (email) updateData.email = email;
+        if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
+        if (profileImage) updateData.profileImage = profileImage;
+
+        // Update admin profile
+        const updatedAdmin = await Admin.findByIdAndUpdate(
+            adminId,
+            updateData,
+            { new: true, runValidators: true }
+        ).select('-password');
+
+        if (!updatedAdmin) {
+            return res.status(404).json({
+                success: false,
+                message: "Admin not found.",
+            });
+        }
+
+        // Map fullName to username for frontend compatibility
+        const adminResponse = updatedAdmin.toObject();
+        adminResponse.username = adminResponse.fullName;
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile updated successfully.",
+            admin: adminResponse,
+        });
+
+    } catch (error) {
+        console.error("Error updating admin profile:", error);
+
+        if (error.name === 'ValidationError') {
+            const errors = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({
+                success: false,
+                message: "Validation failed.",
+                errors: errors
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: "An error occurred while updating the profile.",
+        });
+    }
+};
+
+// Update admin password
+export const updateAdminPassword = async (req, res) => {
+    if (!req.user || req.user.role !== "admin") {
+        return res.status(403).json({
+            success: false,
+            message: "Access denied. Only admins can update their password.",
+        });
+    }
+
+    const { currentPassword, newPassword } = req.body;
+    const adminId = req.user._id || req.user.id;
+
+    // Validation
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({
+            success: false,
+            message: "Both current password and new password are required.",
+        });
+    }
+
+    if (newPassword.length < 6) {
+        return res.status(400).json({
+            success: false,
+            message: "New password must be at least 6 characters long.",
+        });
+    }
+
+    try {
+        // Get admin with password field
+        const admin = await Admin.findById(adminId).select('+password');
+
+        if (!admin) {
+            return res.status(404).json({
+                success: false,
+                message: "Admin not found.",
+            });
+        }
+
+        // Verify current password
+        const isMatch = await bcrypt.compare(currentPassword, admin.password);
+
+        if (!isMatch) {
+            return res.status(400).json({
+                success: false,
+                message: "Current password is incorrect.",
+            });
+        }
+
+        // Update password (will be hashed by pre-save hook)
+        admin.password = newPassword;
+        await admin.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Password updated successfully.",
+        });
+
+    } catch (error) {
+        console.error("Error updating admin password:", error);
+
+        if (error.name === 'ValidationError') {
+            const errors = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({
+                success: false,
+                message: "Validation failed.",
+                errors: errors
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: "An error occurred while updating the password.",
         });
     }
 };

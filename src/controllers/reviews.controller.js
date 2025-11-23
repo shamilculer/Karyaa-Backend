@@ -252,39 +252,6 @@ export const updateReview = async (req, res) => {
  * - The call to updateVendorRating is removed here and handled by the Mongoose 'post' middleware on Review.deleteOne()
  */
 export const deleteReview = async (req, res) => {
-    try {
-        const { reviewId } = req.params;
-
-        const review = await Review.findById(reviewId);
-        if (!review) {
-            return res.status(404).json({ message: "Review not found" });
-        }
-
-        // The deleteOne() method (called on the document) triggers the 'pre/post' middleware 
-        // to call updateVendorRating(vendorId).
-        await review.deleteOne(); 
-
-        // ❌ MANUAL CALL REMOVED: await updateVendorRating(vendorId);
-
-        res.status(200).json({ 
-            message: "Review deleted successfully and vendor statistics recalculated." 
-        });
-    } catch (error) {
-        console.error("Error deleting review:", error);
-        res.status(500).json({ message: "Error deleting review" });
-    }
-};
-
-
-/**
- * @desc Flag a review for removal (Vendor Action)
- * @route PATCH /api/v1/reviews/flag/:reviewId
- * @access Vendor (protected via verifyVendor middleware)
- */
-
-export const flagReviewForRemoval = async (req, res) => {
-  try {
-    const { reviewId } = req.params;
     const vendorId = req.user?.id; // decoded from JWT
     
     // ✅ Ensure a valid review ID format
@@ -327,6 +294,225 @@ export const flagReviewForRemoval = async (req, res) => {
     console.error("Error flagging review for removal:", error);
     return res.status(500).json({
       message: "Server error while flagging review.",
+    });
+  }
+};
+
+
+/**
+ * @desc Get all flagged reviews (Admin Action)
+ * @route GET /api/v1/reviews/admin/flagged
+ * @access Admin (protected via verifyAdmin middleware)
+ */
+export const getFlaggedReviews = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 15;
+    const skip = (page - 1) * limit;
+
+    const rating = req.query.rating ? parseInt(req.query.rating) : null;
+    const status = req.query.status || null;
+    const search = req.query.search?.trim() || "";
+
+    // Base query for flagged reviews
+    let query = { flaggedForRemoval: true };
+
+    // Apply status filter
+    if (status && status !== "all" && ["Pending", "Approved", "Rejected"].includes(status)) {
+      query.status = status;
+    }
+
+    // Apply rating filter
+    if (rating && rating >= 1 && rating <= 5) {
+      query.rating = { $lte: rating };
+    }
+
+    // Apply search filter
+    if (search.length > 0) {
+      query.$or = [
+        { comment: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const totalReviews = await Review.countDocuments(query);
+
+    const reviews = await Review.find(query)
+      .populate({
+        path: "user",
+        select: "username profileImage email _id",
+      })
+      .populate({
+        path: "vendor",
+        select: "businessName logo _id",
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .select("-__v");
+
+    // Filter out reviews where user might be null (if search doesn't match)
+    const filteredReviews = search
+      ? reviews.filter(r => r.user !== null)
+      : reviews;
+
+    res.status(200).json({
+      success: true,
+      page,
+      limit,
+      totalReviews,
+      totalPages: Math.ceil(totalReviews / limit),
+      count: filteredReviews.length,
+      ratingFilter: rating || "all",
+      statusFilter: status || "all",
+      searchTerm: search || "",
+      reviews: filteredReviews,
+      message: "Successfully fetched flagged reviews.",
+    });
+
+  } catch (error) {
+    console.error("Error getting flagged reviews:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching flagged reviews.",
+    });
+  }
+};
+
+
+/**
+ * @desc Bulk action on reviews (Admin Action)
+ * @route POST /api/v1/reviews/admin/bulk-action
+ * @access Admin (protected via verifyAdmin middleware)
+ */
+export const bulkActionReviews = async (req, res) => {
+  try {
+    const { reviewIds, action } = req.body;
+
+    if (!reviewIds || !Array.isArray(reviewIds) || reviewIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Review IDs array is required.",
+      });
+    }
+
+    if (!["approve", "reject", "delete"].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid action. Must be 'approve', 'reject', or 'delete'.",
+      });
+    }
+
+    let result;
+
+    if (action === "delete") {
+      // Delete reviews
+      result = await Review.deleteMany({ _id: { $in: reviewIds } });
+      
+      return res.status(200).json({
+        success: true,
+        message: `${result.deletedCount} review(s) deleted successfully.`,
+        deletedCount: result.deletedCount,
+      });
+    } else if (action === "approve") {
+      // Approve reviews and unflag them
+      result = await Review.updateMany(
+        { _id: { $in: reviewIds } },
+        { $set: { status: "Approved", flaggedForRemoval: false } }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: `${result.modifiedCount} review(s) approved successfully.`,
+        modifiedCount: result.modifiedCount,
+      });
+    } else if (action === "reject") {
+      // Reject reviews
+      result = await Review.updateMany(
+        { _id: { $in: reviewIds } },
+        { $set: { status: "Rejected" } }
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: `${result.modifiedCount} review(s) rejected successfully.`,
+        modifiedCount: result.modifiedCount,
+      });
+    }
+
+  } catch (error) {
+    console.error("Error performing bulk action:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error performing bulk action on reviews.",
+    });
+  }
+};
+
+
+/**
+ * @desc Single action on a review (Admin Action)
+ * @route POST /api/v1/reviews/admin/action/:reviewId
+ * @access Admin (protected via verifyAdmin middleware)
+ */
+export const singleActionReview = async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const { action } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(reviewId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid review ID format.",
+      });
+    }
+
+    if (!["approve", "reject", "delete"].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid action. Must be 'approve', 'reject', or 'delete'.",
+      });
+    }
+
+    const review = await Review.findById(reviewId);
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: "Review not found.",
+      });
+    }
+
+    if (action === "delete") {
+      await review.deleteOne();
+      return res.status(200).json({
+        success: true,
+        message: "Review deleted successfully.",
+      });
+    } else if (action === "approve") {
+      review.status = "Approved";
+      review.flaggedForRemoval = false;
+      await review.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Review approved successfully.",
+        review,
+      });
+    } else if (action === "reject") {
+      review.status = "Rejected";
+      await review.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Review rejected successfully.",
+        review,
+      });
+    }
+
+  } catch (error) {
+    console.error("Error performing single action:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error performing action on review.",
     });
   }
 };

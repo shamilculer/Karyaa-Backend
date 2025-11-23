@@ -19,6 +19,12 @@ const adminSchema = new mongoose.Schema(
       index: true,
     },
 
+    phoneNumber: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
     password: {
       type: String,
       required: [true, "Password is required"],

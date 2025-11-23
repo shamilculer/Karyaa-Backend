@@ -98,7 +98,7 @@ export const getCurrentAdminData = async (req, res) => {
 
   try {
       const admin = await Admin.findById(adminId)
-          .select("fullName profileImage role email adminLevel accessControl isActive accesControl"); 
+          .select("fullName profileImage role email phoneNumber adminLevel accessControl isActive"); 
 
 
       if (!admin) {
@@ -115,6 +115,7 @@ export const getCurrentAdminData = async (req, res) => {
           profileImage: admin.profileImage,
           role: admin.role,
           email: admin.email,
+          phoneNumber: admin.phoneNumber,
           adminLevel: admin.adminLevel,
           accessControl: admin.accessControl, 
           isActive: admin.isActive,
@@ -132,6 +133,101 @@ export const getCurrentAdminData = async (req, res) => {
       return res.status(500).json({ 
           success: false, 
           message: "Server error while retrieving admin data." 
+      });
+  }
+};
+
+export const getCurrentUserData = async (req, res) => {
+  const userId = req.params.userId; 
+
+  if (!userId) {
+      return res.status(401).json({ 
+          success: false, 
+          message: "Authentication failed. No user ID found in request." 
+      });
+  }
+
+  try {
+      const user = await User.findById(userId)
+          .select("username emailAddress mobileNumber profileImage role location isVerified"); 
+
+      if (!user) {
+          return res.status(404).json({ 
+              success: false, 
+              message: "User account not found." 
+          });
+      }
+      
+      const userResponse = {
+          id: user._id, 
+          username: user.username,
+          email: user.emailAddress,
+          mobileNumber: user.mobileNumber,
+          profileImage: user.profileImage,
+          role: user.role,
+          location: user.location,
+          isVerified: user.isVerified,
+      };
+      
+      return res.status(200).json({
+          success: true,
+          user: userResponse,
+          message: "Fresh user data retrieved successfully."
+      });
+
+  } catch (error) {
+      console.error("Error fetching current user data:", error);
+      return res.status(500).json({ 
+          success: false, 
+          message: "Server error while retrieving user data." 
+      });
+  }
+};
+
+export const getCurrentVendorData = async (req, res) => {
+  const vendorId = req.params.vendorId; 
+
+  if (!vendorId) {
+      return res.status(401).json({ 
+          success: false, 
+          message: "Authentication failed. No vendor ID found in request." 
+      });
+  }
+
+  try {
+      const vendor = await Vendor.findById(vendorId)
+          .select("businessName email phoneNumber businessLogo role slug tagline vendorStatus"); 
+
+      if (!vendor) {
+          return res.status(404).json({ 
+              success: false, 
+              message: "Vendor account not found." 
+          });
+      }
+      
+      const vendorResponse = {
+          id: vendor._id, 
+          businessName: vendor.businessName,
+          email: vendor.email,
+          phoneNumber: vendor.phoneNumber,
+          businessLogo: vendor.businessLogo,
+          role: vendor.role,
+          slug: vendor.slug,
+          tagline: vendor.tagline,
+          vendorStatus: vendor.vendorStatus,
+      };
+      
+      return res.status(200).json({
+          success: true,
+          vendor: vendorResponse,
+          message: "Fresh vendor data retrieved successfully."
+      });
+
+  } catch (error) {
+      console.error("Error fetching current vendor data:", error);
+      return res.status(500).json({ 
+          success: false, 
+          message: "Server error while retrieving vendor data." 
       });
   }
 };

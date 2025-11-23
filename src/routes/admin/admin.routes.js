@@ -1,5 +1,5 @@
 import express from "express";
-import { createAdmin, deleteAdmin, getAllAdmins, loginAdmin, toggleAdminStatus, updateAdminAccessControl } from "../../controllers/admin/admin.controller.js";
+import { createAdmin, deleteAdmin, getAllAdmins, loginAdmin, toggleAdminStatus, updateAdminAccessControl, updateAdminProfile, updateAdminPassword } from "../../controllers/admin/admin.controller.js";
 import {
   addCategory,
   addSubCategory,
@@ -107,6 +107,8 @@ router.post("/admins/new", verifyToken, createAdmin)
 router.put("/admins/:id/status", verifyToken, toggleAdminStatus)
 router.delete("/admins/:id/delete", verifyToken, deleteAdmin);
 router.put("/admins/:id/access-control", verifyToken, updateAdminAccessControl)
+router.put("/admins/profile/update", verifyToken, updateAdminProfile)
+router.put("/admins/password/update", verifyToken, updateAdminPassword)
 
 router.get("/referrals", verifyToken, getReferrals)
 router.patch("/referrals/status", verifyToken, updateReferralStatus)
