@@ -1,4 +1,8 @@
 import Vendor from "../../models/Vendor.model.js";
+import GalleryItem from "../../models/GalleryItem.model.js";
+import Package from "../../models/Package.model.js";
+import Bundle from "../../models/Bundle.model.js";
+import mongoose from "mongoose";
 
 // Get all vendors with pagination and filters (for admin table)
 export const getAllVendors = async (req, res) => {
@@ -220,12 +224,16 @@ export const getVendorById = async (req, res) => {
     // Get total subscription duration
     const subscriptionDuration = await vendor.getTotalSubscriptionDuration();
 
+    const responseVendor = {
+      ...vendor.toObject(),
+      allFeatures,
+      subscriptionDuration,
+    }
+
     res.status(200).json({
       success: true,
       data: {
-        ...vendor.toObject(),
-        allFeatures,
-        subscriptionDuration,
+        ...responseVendor,
       },
     });
   } catch (error) {
@@ -464,7 +472,7 @@ export const updateVendorFeatures = async (req, res) => {
       data: {
         ...vendor.toObject(),
         allFeatures,
-      },
+        },
       message: "Custom features updated successfully",
     });
   } catch (error) {
@@ -678,4 +686,705 @@ export const updateVendorDocuments = async (req, res) => {
       message: error.message || "An error occurred while updating vendor documents",
     });
   }
+};
+
+// Update vendor details (Admin)
+export const updateVendorDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Prevent updating sensitive or restricted fields directly via this endpoint if needed
+    // For now, we allow updating most fields as this is an admin endpoint
+    delete updateData.password;
+    delete updateData.referenceId;
+    delete updateData.slug; // Usually slug shouldn't be changed manually, or if it is, we need to handle uniqueness
+
+    const vendor = await Vendor.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    })
+      .populate("selectedBundle")
+      .populate("mainCategory")
+      .populate("subCategories");
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: vendor,
+      message: "Vendor details updated successfully",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Update vendor bundle (Admin)
+export const updateVendorBundle = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { bundleId, subscriptionStartDate, subscriptionEndDate } = req.body;
+
+    if (!bundleId) {
+      return res.status(400).json({
+        success: false,
+        message: "Bundle ID is required",
+      });
+    }
+
+    const bundle = await Bundle.findById(bundleId);
+    if (!bundle) {
+      return res.status(404).json({
+        success: false,
+        message: "Bundle not found",
+      });
+    }
+
+    const updateFields = {
+      selectedBundle: bundleId,
+      customDuration: null // Reset custom duration to default (null) so it uses bundle duration
+    };
+
+    // Determine Start Date
+    const startDate = subscriptionStartDate ? new Date(subscriptionStartDate) : new Date();
+    updateFields.subscriptionStartDate = startDate;
+
+    // Determine End Date
+    if (subscriptionEndDate) {
+      updateFields.subscriptionEndDate = new Date(subscriptionEndDate);
+    } else {
+        // Calculate end date based on new bundle duration
+        const endDate = calculateSubscriptionEndDate(
+            startDate,
+            bundle.duration,
+            bundle.bonusPeriod
+        );
+        updateFields.subscriptionEndDate = endDate;
+    }
+
+    const vendor = await Vendor.findByIdAndUpdate(id, updateFields, {
+      new: true,
+      runValidators: true,
+    })
+      .populate("selectedBundle")
+      .populate("mainCategory")
+      .populate("subCategories");
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    const allFeatures = await vendor.getAllFeatures();
+    const subscriptionDuration = await vendor.getTotalSubscriptionDuration();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...vendor.toObject(),
+        allFeatures,
+        subscriptionDuration,
+      },
+      message: "Vendor bundle updated successfully",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get Vendor Gallery
+export const getVendorGallery = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const galleryItems = await GalleryItem.find({ vendor: id }).sort({ createdAt: -1 });
+    res.status(200).json({
+      success: true,
+      data: galleryItems,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Delete Vendor Gallery Item
+export const deleteVendorGalleryItem = async (req, res) => {
+  try {
+    const { id, itemId } = req.params;
+    
+    const item = await GalleryItem.findOneAndDelete({ _id: itemId, vendor: id });
+
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: "Gallery item not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Gallery item deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get Vendor Packages
+export const getVendorPackages = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const packages = await Package.find({ vendor: id }).sort({ createdAt: -1 });
+    res.status(200).json({
+      success: true,
+      data: packages,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Delete Vendor Package
+export const deleteVendorPackage = async (req, res) => {
+  try {
+    const { id, packageId } = req.params;
+
+    const pkg = await Package.findOneAndDelete({ _id: packageId, vendor: id });
+
+    if (!pkg) {
+      return res.status(404).json({
+        success: false,
+        message: "Package not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Package deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Add Vendor Gallery Item (Admin)
+export const addVendorGalleryItem = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { url, isFeatured, orderIndex } = req.body;
+
+    if (!url) {
+      return res.status(400).json({
+        success: false,
+        message: "Image URL is required",
+      });
+    }
+
+    // Validate vendor exists
+    const vendor = await Vendor.findById(id);
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    // Get current max orderIndex if orderIndex not provided
+    let finalOrderIndex = orderIndex;
+    if (finalOrderIndex === undefined || finalOrderIndex === null) {
+      const lastItem = await GalleryItem.findOne({ vendor: id })
+        .sort({ orderIndex: -1 })
+        .limit(1);
+      finalOrderIndex = lastItem ? lastItem.orderIndex + 1 : 0;
+    }
+
+    const newGalleryItem = await GalleryItem.create({
+      vendor: id,
+      url,
+      isFeatured: isFeatured || false,
+      orderIndex: finalOrderIndex,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: newGalleryItem,
+      message: "Gallery item added successfully",
+    });
+  } catch (error) {
+    console.error("Error adding gallery item:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Update Vendor Gallery Item (Admin)
+export const updateVendorGalleryItem = async (req, res) => {
+  try {
+    const { id, itemId } = req.params;
+    const { url, isFeatured, orderIndex } = req.body;
+
+    const updateFields = {};
+    if (url !== undefined) updateFields.url = url;
+    if (isFeatured !== undefined) updateFields.isFeatured = isFeatured;
+    if (orderIndex !== undefined) updateFields.orderIndex = orderIndex;
+
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No fields to update",
+      });
+    }
+
+    const galleryItem = await GalleryItem.findOneAndUpdate(
+      { _id: itemId, vendor: id },
+      updateFields,
+      { new: true, runValidators: true }
+    );
+
+    if (!galleryItem) {
+      return res.status(404).json({
+        success: false,
+        message: "Gallery item not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: galleryItem,
+      message: "Gallery item updated successfully",
+    });
+  } catch (error) {
+    console.error("Error updating gallery item:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Add Vendor Package (Admin) - bypasses 9-package limit
+export const addVendorPackage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      coverImage,
+      name,
+      subheading,
+      description,
+      priceStartingFrom,
+      services,
+      includes,
+    } = req.body;
+
+    // Validate required fields
+    if (
+      !coverImage ||
+      !name ||
+      !description ||
+      !services?.length ||
+      priceStartingFrom === undefined ||
+      priceStartingFrom === null
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields: coverImage, name, description, services[], priceStartingFrom",
+      });
+    }
+
+    // Validate vendor exists
+    const vendor = await Vendor.findById(id);
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    // Check for duplicate package name for this vendor
+    const duplicate = await Package.findOne({
+      vendor: id,
+      name: name.trim(),
+    });
+
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message: "A package with this name already exists for this vendor",
+      });
+    }
+
+    // Create package (admin can bypass the 9-package limit)
+    const newPackage = await Package.create({
+      vendor: id,
+      coverImage,
+      name: name.trim(),
+      subheading,
+      description,
+      priceStartingFrom,
+      services,
+      includes: includes || [],
+    });
+
+    res.status(201).json({
+      success: true,
+      data: newPackage,
+      message: "Package created successfully",
+    });
+  } catch (error) {
+    console.error("Error adding package:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Update Vendor Package (Admin)
+export const updateVendorPackage = async (req, res) => {
+  try {
+    const { id, packageId } = req.params;
+    const {
+      coverImage,
+      name,
+      subheading,
+      description,
+      priceStartingFrom,
+      services,
+      includes,
+    } = req.body;
+
+    // Find existing package
+    const existingPackage = await Package.findOne({ _id: packageId, vendor: id });
+
+    if (!existingPackage) {
+      return res.status(404).json({
+        success: false,
+        message: "Package not found",
+      });
+    }
+
+    // Check for duplicate name if name is being changed
+    if (name && name.trim() !== existingPackage.name) {
+      const duplicate = await Package.findOne({
+        vendor: id,
+        name: name.trim(),
+        _id: { $ne: packageId },
+      });
+
+      if (duplicate) {
+        return res.status(409).json({
+          success: false,
+          message: "A package with this name already exists for this vendor",
+        });
+      }
+    }
+
+    // Build update object
+    const updateFields = {};
+    if (coverImage !== undefined) updateFields.coverImage = coverImage;
+    if (name !== undefined) updateFields.name = name.trim();
+    if (subheading !== undefined) updateFields.subheading = subheading;
+    if (description !== undefined) updateFields.description = description;
+    if (priceStartingFrom !== undefined) updateFields.priceStartingFrom = priceStartingFrom;
+    if (services !== undefined) updateFields.services = services;
+    if (includes !== undefined) updateFields.includes = includes;
+
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No fields to update",
+      });
+    }
+
+    const updatedPackage = await Package.findByIdAndUpdate(
+      packageId,
+      updateFields,
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: updatedPackage,
+      message: "Package updated successfully",
+    });
+  } catch (error) {
+    console.error("Error updating package:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Add vendor gallery items (Bulk - Admin)
+export const addVendorGalleryItems = async (req, res) => {
+  try {
+    const { id } = req.params; // vendorId
+    const { items } = req.body; // array of { url, type }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid vendor ID",
+      });
+    }
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Items array is required",
+      });
+    }
+
+    // Verify vendor exists
+    const vendor = await Vendor.findById(id);
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    // Create gallery items
+    const galleryItems = items.map(item => ({
+      vendor: id,
+      url: item.url,
+      type: item.type || "image",
+      isFeatured: item.isFeatured || false,
+      orderIndex: item.orderIndex || 0,
+    }));
+
+    const createdItems = await GalleryItem.insertMany(galleryItems);
+
+    res.status(201).json({
+      success: true,
+      data: createdItems,
+      message: `${createdItems.length} gallery item(s) added successfully`,
+    });
+  } catch (error) {
+    console.error("Error adding gallery items:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Delete vendor gallery items (Bulk - Admin)
+export const deleteVendorGalleryItems = async (req, res) => {
+  try {
+    const { id } = req.params; // vendorId
+    const { itemIds } = req.body; // array of gallery item IDs
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid vendor ID",
+      });
+    }
+
+    if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Item IDs array is required",
+      });
+    }
+
+    // Verify vendor exists
+    const vendor = await Vendor.findById(id);
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    // Delete gallery items that belong to this vendor
+    const result = await GalleryItem.deleteMany({
+      _id: { $in: itemIds },
+      vendor: id,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `${result.deletedCount} gallery item(s) deleted successfully`,
+    });
+  } catch (error) {
+    console.error("Error deleting gallery items:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ... (existing controller functions) ...
+
+// ==================== ADMIN COMMENTS ====================
+
+// Add admin comment
+export const addAdminComment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { message } = req.body;
+
+        if (!message || !message.trim()) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Comment message is required" 
+            });
+        }
+
+        const vendor = await Vendor.findById(id);
+        if (!vendor) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Vendor not found" 
+            });
+        }
+
+        vendor.adminComments.push({
+            message: message.trim(),
+            createdAt: new Date()
+        });
+
+        await vendor.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Comment added successfully",
+            data: vendor.adminComments
+        });
+    } catch (error) {
+        console.error("Error adding admin comment:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+};
+
+// Delete admin comment
+export const deleteAdminComment = async (req, res) => {
+    try {
+        const { id, commentId } = req.params;
+
+        const vendor = await Vendor.findById(id);
+        if (!vendor) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Vendor not found" 
+            });
+        }
+
+        const commentIndex = vendor.adminComments.findIndex(
+            comment => comment._id.toString() === commentId
+        );
+
+        if (commentIndex === -1) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Comment not found" 
+            });
+        }
+
+        vendor.adminComments.splice(commentIndex, 1);
+        await vendor.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Comment deleted successfully",
+            data: vendor.adminComments
+        });
+    } catch (error) {
+        console.error("Error deleting admin comment:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+};
+
+// ==================== ADDITIONAL DOCUMENTS ====================
+
+// Add additional document
+export const addAdditionalDocument = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { documentName, documentUrl } = req.body;
+
+        if (!documentName || !documentName.trim()) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Document name is required" 
+            });
+        }
+
+        if (!documentUrl || !documentUrl.trim()) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Document URL is required" 
+            });
+        }
+
+        const vendor = await Vendor.findById(id);
+        if (!vendor) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Vendor not found" 
+            });
+        }
+
+        vendor.additionalDocuments.push({
+            documentName: documentName.trim(),
+            documentUrl: documentUrl.trim(),
+            uploadedAt: new Date()
+        });
+
+        await vendor.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Document added successfully",
+            data: vendor.additionalDocuments
+        });
+    } catch (error) {
+        console.error("Error adding additional document:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
+};
+
+// Delete additional document
+export const deleteAdditionalDocument = async (req, res) => {
+    try {
+        const { id, documentId } = req.params;
+
+        const vendor = await Vendor.findById(id);
+        if (!vendor) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Vendor not found" 
+            });
+        }
+
+        const documentIndex = vendor.additionalDocuments.findIndex(
+            doc => doc._id.toString() === documentId
+        );
+
+        if (documentIndex === -1) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Document not found" 
+            });
+        }
+
+        vendor.additionalDocuments.splice(documentIndex, 1);
+        await vendor.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Document deleted successfully",
+            data: vendor.additionalDocuments
+        });
+    } catch (error) {
+        console.error("Error deleting additional document:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
+    }
 };

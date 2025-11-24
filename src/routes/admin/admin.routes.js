@@ -37,7 +37,23 @@ import {
   updateVendorDocuments,
   updateVendorDuration,
   updateVendorFeatures,
-  updateVendorStatus
+  updateVendorStatus,
+  updateVendorDetails,
+  updateVendorBundle,
+  getVendorGallery,
+  deleteVendorGalleryItem,
+  addVendorGalleryItem,
+  updateVendorGalleryItem,
+  addVendorGalleryItems,
+  deleteVendorGalleryItems,
+  getVendorPackages,
+  deleteVendorPackage,
+  addVendorPackage,
+  updateVendorPackage,
+  addAdminComment,
+  deleteAdminComment,
+  addAdditionalDocument,
+  deleteAdditionalDocument
 } from "../../controllers/admin/vendor.controller.js";
 import { createBanner, deleteBanner, getAllBanners, toggleStatus, updateBanner } from "../../controllers/admin/adBanner.controller.js";
 import { deleteReferrals, getReferrals, updateReferralStatus } from "../../controllers/referral.controller.js";
@@ -95,7 +111,29 @@ router.put("/vendors/:id/status", verifyToken, updateVendorStatus);
 router.put("/vendors/:id/features", verifyToken, updateVendorFeatures)
 router.put("/vendors/:id/toggle-recommendation", verifyToken, toggleRecommended)
 router.patch("/vendors/:id/duration", verifyToken, updateVendorDuration);
+
 router.patch("/vendors/:id/documents", verifyToken, updateVendorDocuments);
+router.put("/vendors/:id/details", verifyToken, updateVendorDetails);
+router.put("/vendors/:id/bundle", verifyToken, updateVendorBundle);
+router.get("/vendors/:id/gallery", verifyToken, getVendorGallery);
+router.post("/vendors/:id/gallery", verifyToken, addVendorGalleryItem);
+router.put("/vendors/:id/gallery/:itemId", verifyToken, updateVendorGalleryItem);
+router.delete("/vendors/:id/gallery/:itemId", verifyToken, deleteVendorGalleryItem);
+router.post("/vendors/:id/gallery/bulk", verifyToken, addVendorGalleryItems);
+router.delete("/vendors/:id/gallery/bulk", verifyToken, deleteVendorGalleryItems);
+router.get("/vendors/:id/packages", verifyToken, getVendorPackages);
+router.post("/vendors/:id/packages", verifyToken, addVendorPackage);
+router.put("/vendors/:id/packages/:packageId", verifyToken, updateVendorPackage);
+router.delete("/vendors/:id/packages/:packageId", verifyToken, deleteVendorPackage);
+
+// Admin comments routes
+router.post("/vendors/:id/comments", verifyToken, addAdminComment);
+router.delete("/vendors/:id/comments/:commentId", verifyToken, deleteAdminComment);
+
+// Additional documents routes
+router.post("/vendors/:id/additional-documents", verifyToken, addAdditionalDocument);
+router.delete("/vendors/:id/additional-documents/:documentId", verifyToken, deleteAdditionalDocument);
+
 
 router.get("/ad-banner/all", verifyToken, getAllBanners);
 router.put("/ad-banner/:id", verifyToken, updateBanner);

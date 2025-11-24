@@ -3,6 +3,11 @@ import bcrypt from "bcrypt";
 
 const vendorSchema = mongoose.Schema(
     {
+        referenceId: {
+            type: String,
+            unique: true,
+            trim: true,
+        },
         ownerName: {
             type: String,
             required: [true, "Owner's Name is required for registration"],
@@ -41,8 +46,6 @@ const vendorSchema = mongoose.Schema(
             required: function () {
                 return !this.isInternational;
             },
-            // REMOVED: unique: true,
-            // REMOVED: sparse: true,
             trim: true,
         },
         tradeLicenseCopy: {
@@ -77,6 +80,42 @@ const vendorSchema = mongoose.Schema(
                 return this.isInternational;
             },
         },
+        
+        // Additional Documents Section
+        additionalDocuments: [
+            {
+                documentName: {
+                    type: String,
+                    required: true,
+                    trim: true,
+                },
+                documentUrl: {
+                    type: String,
+                    required: true,
+                    trim: true,
+                },
+                uploadedAt: {
+                    type: Date,
+                    default: Date.now,
+                },
+            },
+        ],
+
+        // Admin Comments Section (Only admins can add/edit/delete)
+        adminComments: [
+            {
+                message: {
+                    type: String,
+                    required: true,
+                    trim: true,
+                },
+                createdAt: {
+                    type: Date,
+                    default: Date.now,
+                },
+            },
+        ],
+
         businessName: {
             type: String,
             required: [true, "Business Name is required for vendor listing"],
@@ -444,7 +483,23 @@ vendorSchema.pre("save", async function (next) {
             this._previousVendorState = null;
         }
 
-        // 2. Slug Generation
+        // 2. Reference ID Generation
+        if (!this.referenceId && this.isNew) {
+             const generateRefId = () => {
+                const random = Math.floor(100000 + Math.random() * 900000); // 6 digit number
+                return `KAR${random}`;
+             };
+             
+             let refId = generateRefId();
+             if (mongoose.models.Vendor) {
+                while (await mongoose.models.Vendor.findOne({ referenceId: refId })) {
+                    refId = generateRefId();
+                }
+             }
+             this.referenceId = refId;
+        }
+
+        // 3. Slug Generation
         if (this.isModified("businessName") || this.isNew) {
             let baseSlug = this.businessName
                 .toLowerCase()
@@ -629,6 +684,8 @@ vendorSchema.methods.getAllFeatures = async function () {
 
     return [...(bundle.features || []), ...(this.customFeatures || [])];
 };
+
+
 
 const Vendor = mongoose.model("Vendor", vendorSchema);
 

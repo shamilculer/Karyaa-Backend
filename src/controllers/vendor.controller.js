@@ -181,38 +181,39 @@ export const registerVendor = async (req, res) => {
         twitterLink,
       });
   
-      const vendor = await newVendor.save();
-  
-      res.status(201).json({
-        success: true,
-        message:
-          "Success! Your registration has been submitted and is now pending admin approval. We will notify you via email shortly.",
-        vendor: {
-          _id: vendor._id,
-          businessName: vendor.businessName,
-          email: vendor.email,
-          vendorStatus: vendor.vendorStatus,
-          isInternational: vendor.isInternational,
-        },
-      });
-    } catch (error) {
-      console.error("Vendor registration failed:", error);
-      if (error.name === "ValidationError") {
-        const messages = Object.values(error.errors).map((val) => val.message);
-        return res.status(400).json({
-          success: false,
-          message: `Validation Error: Please correct the following issues: ${messages.join(
-            ", "
-          )}`,
-        });
-      }
-      res.status(500).json({
-        success: false,
-        message:
-          "System Error: Registration failed due to a server issue. Please try again later.",
-      });
-    }
-  };
+    await newVendor.save();
+
+    res.status(201).json({
+      success: true,
+      message:
+        "Success! Your registration has been submitted and is now pending admin approval. We will notify you via email shortly.",
+      vendor: {
+        _id: newVendor._id,
+        referenceId: newVendor.referenceId,
+        businessName: newVendor.businessName,
+        email: newVendor.email,
+        vendorStatus: newVendor.vendorStatus,
+        isInternational: newVendor.isInternational,
+      },
+    });
+  } catch (error) {
+    console.error("Vendor registration error:", error);
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((val) => val.message);
+      return res.status(400).json({
+        success: false,
+        message: `Validation Error: Please correct the following issues: ${messages.join(
+          ", "
+        )}`,
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message:
+        "System Error: Registration failed due to a server issue. Please try again later.",
+    });
+  }
+};
 
 // -------------------------------------------------------------------
 // --- Vendor Login (POST /api/vendors/login) ---
@@ -441,7 +442,7 @@ export const getApprovedVendors = async (req, res) => {
 
       const vendors = await Vendor.find(query)
           .select(
-              "businessName slug businessDescription businessLogo address.city averageRating  pricingStartingFrom  isRecommended tagline address.coordinates"
+              "businessName slug businessDescription businessLogo address.city averageRating  pricingStartingFrom  isRecommended tagline address.coordinates referenceId"
           )
           .populate("mainCategory", "name slug")
           .sort(sortOptions)
