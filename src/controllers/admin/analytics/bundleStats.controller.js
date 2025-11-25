@@ -2,13 +2,7 @@ import Vendor from "../../../models/Vendor.model.js";
 import Bundle from "../../../models/Bundle.model.js";
 
 export const getBundleStats = async (req, res) => {
-  if (!req.user || req.user.role !== "admin") {
-    return res.status(403).json({
-      success: false,
-      message: "Access denied. Only admins can fetch bundle stats.",
-    });
-  }
-
+  // verifyAdmin middleware already checks role, so we can remove this check
   try {
     const totalActiveBundles = await Bundle.countDocuments({
       status: "active",

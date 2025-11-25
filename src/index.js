@@ -25,6 +25,9 @@ import contentRoutes from "./routes/pages.routes.js"
 
 
 import bundleStatsRoute from "./routes/admin/analytics/bundleAnalytics.routes.js"
+import platformAnalyticsRoute from "./routes/admin/analytics/platformAnalytics.routes.js"
+import revenueAnalyticsRoute from "./routes/admin/analytics/revenueAnalytics.routes.js"
+import dashboardRoute from "./routes/admin/dashboard.routes.js"
 
 
 import cookieParser from 'cookie-parser';
@@ -64,7 +67,10 @@ app.use("/api/v1/content", contentRoutes);
 
 
 app.use('/api/v1/admin', adminRoutes)
-app.use('/api/v1/admin/analytics', bundleStatsRoute)
+app.use('/api/v1/admin/analytics/bundles', bundleStatsRoute)
+app.use('/api/v1/admin/analytics/platform', platformAnalyticsRoute)
+app.use('/api/v1/admin/analytics/revenue', revenueAnalyticsRoute)
+app.use('/api/v1/admin/dashboard', dashboardRoute)
 
 
 const startServer = async () => {

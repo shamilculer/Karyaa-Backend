@@ -216,7 +216,7 @@ const vendorSchema = mongoose.Schema(
         customDuration: {
             value: {
                 type: Number,
-                min: 1,
+                min: 0,
             },
             unit: {
                 type: String,
@@ -630,7 +630,7 @@ vendorSchema.methods.hasActiveSubscription = function () {
 // Get total subscription duration (base + bonus)
 vendorSchema.methods.getTotalSubscriptionDuration = async function () {
     // If custom duration is set, use that
-    if (this.customDuration && this.customDuration.value) {
+    if (this.customDuration && this.customDuration.value !== undefined && this.customDuration.value !== null) {
         const baseDuration = {
             value: this.customDuration.value,
             unit: this.customDuration.unit,

@@ -15,7 +15,7 @@ export const postReferral = async (req, res) => {
         } = req.body;
 
 
-        if (!referrerFullname || !referrerEmail || referrerPhone || !vendors || vendors.length === 0) {
+        if (!referrerFullname || !referrerEmail || !referrerPhone || !vendors || vendors.length === 0) {
             return res.status(400).json({
                 success: false,
                 message: "Missing required fields: Referrer's name, email, phone number and at least one vendor are mandatory.",

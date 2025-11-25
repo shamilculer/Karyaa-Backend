@@ -23,14 +23,11 @@ const bannerSchema = mongoose.Schema(
         },
         
         // 💡 UPDATED: Placement is now an array of strings for multi-selection
+        // No enum restriction - allows dynamic placement values (categories, subcategories, static pages)
         placement: {
             type: [String], // Array of strings
-            enum: {
-                values: ['Homepage Carousel'],
-                message: '{VALUE} is not a valid banner placement.'
-            },
-            default: ['Homepage Carousel'],
             required: true,
+            default: ['Homepage Carousel'],
         },
 
         isVendorSpecific: {

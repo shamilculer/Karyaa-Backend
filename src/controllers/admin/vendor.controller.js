@@ -14,6 +14,7 @@ export const getAllVendors = async (req, res) => {
       vendorStatus = "",
       city = "",
       isInternational = "",
+      expiryStatus = "",
       sortBy = "createdAt",
       sortOrder = "desc",
     } = req.query;
@@ -25,10 +26,31 @@ export const getAllVendors = async (req, res) => {
     if (vendorStatus) matchQuery.vendorStatus = vendorStatus;
     if (city) matchQuery["address.city"] = city;
     if (isInternational !== "") matchQuery.isInternational = isInternational === "true";
+    
+    // Filter by expiry status
+    if (expiryStatus) {
+      const now = new Date();
+      if (expiryStatus === 'expiring-soon') {
+        const threeMonthsFromNow = new Date();
+        threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
+        matchQuery.subscriptionEndDate = {
+          $gte: now,
+          $lte: threeMonthsFromNow
+        };
+      } else if (expiryStatus === 'expired') {
+        matchQuery.subscriptionEndDate = { $lt: now };
+      }
+    }
 
     // If no search, use simple query
     if (!search || search.trim() === "") {
-      const sort = { [sortBy]: sortOrder === "asc" ? 1 : -1 };
+      // Override sort when filtering by expiry status
+      let sort;
+      if (expiryStatus) {
+        sort = { subscriptionEndDate: 1 }; // Ascending order (soonest first)
+      } else {
+        sort = { [sortBy]: sortOrder === "asc" ? 1 : -1 };
+      }
 
       const vendors = await Vendor.find(matchQuery)
         .select(
@@ -144,7 +166,9 @@ export const getAllVendors = async (req, res) => {
 
       // Sort
       {
-        $sort: { [sortBy]: sortOrder === "asc" ? 1 : -1 },
+        $sort: expiryStatus 
+          ? { subscriptionEndDate: 1 } // Ascending order when filtering by expiry
+          : { [sortBy]: sortOrder === "asc" ? 1 : -1 }
       },
 
       // Facet for pagination and total count
@@ -360,23 +384,20 @@ export const updateVendorDuration = async (req, res) => {
   try {
     const { id } = req.params;
     const { customDuration } = req.body;
-
     // Validate customDuration structure
     if (customDuration) {
-      if (!customDuration.value || !customDuration.unit) {
+      if (typeof customDuration.value !== 'number' || !customDuration.unit) {
         return res.status(400).json({
           success: false,
-          message: "customDuration must include 'value' and 'unit'",
+          message: "customDuration must include 'value' (number) and 'unit'",
         });
       }
-
       if (!["days", "months", "years"].includes(customDuration.unit)) {
         return res.status(400).json({
           success: false,
           message: "unit must be 'days', 'months', or 'years'",
         });
       }
-
       // Validate bonusPeriod if provided
       if (customDuration.bonusPeriod) {
         if (!["days", "months", "years"].includes(customDuration.bonusPeriod.unit)) {
@@ -387,23 +408,20 @@ export const updateVendorDuration = async (req, res) => {
         }
       }
     }
-
     const vendor = await Vendor.findByIdAndUpdate(
       id,
       { customDuration },
-      { new: true, runValidators: true }
+      { new: true, runValidators: false }
     )
       .populate("selectedBundle")
       .populate("mainCategory")
       .populate("subCategories");
-
     if (!vendor) {
       return res.status(404).json({
         success: false,
         message: "Vendor not found",
       });
     }
-
     // Recalculate subscription end date if vendor is approved
     if (vendor.vendorStatus === "approved" && vendor.subscriptionStartDate) {
       const duration = await vendor.getTotalSubscriptionDuration();
@@ -414,14 +432,20 @@ export const updateVendorDuration = async (req, res) => {
           duration.base,
           duration.bonus
         );
+        
+        // Update end date without triggering validation
+        await Vendor.findByIdAndUpdate(
+          id,
+          { subscriptionEndDate: endDate },
+          { new: false, runValidators: false }
+        );
+        
+        // Update the vendor object for response
         vendor.subscriptionEndDate = endDate;
-        await vendor.save();
       }
     }
-
     const allFeatures = await vendor.getAllFeatures();
     const subscriptionDuration = await vendor.getTotalSubscriptionDuration();
-
     res.status(200).json({
       success: true,
       data: {
