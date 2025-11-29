@@ -42,19 +42,19 @@ ideaCategorySchema.pre("save", function (next) {
 
 ideaCategorySchema.pre(["findOneAndUpdate", "updateMany"], function (next) {
   const update = this.getUpdate();
-  
+
   if (update.name) {
     update.slug = generateSlug(update.name);
   }
-  
+
   if (update.$set && update.$set.name) {
     update.$set.slug = generateSlug(update.$set.name);
   }
-  
+
   next();
 });
 
-ideaCategorySchema.index({ slug: 1 });
+// Index already created by unique: true on slug field
 
 const IdeaCategory = mongoose.model("IdeaCategory", ideaCategorySchema);
 

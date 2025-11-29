@@ -3,14 +3,18 @@ import {
     createUser,
     loginUser,
     logoutUser,
-    fetchUserSession,
+    fetchUserSession
+} from "../controllers/user/auth.controller.js";
+import {
     getSavedVendors,
-    toggleSavedVendor,
+    toggleSavedVendor
+} from "../controllers/user/savedVendors.controller.js";
+import {
     getUserProfile,
     updateUserProfile,
     changePassword,
     deleteUserAccount
-} from "../controllers/user.controller.js"
+} from "../controllers/user/profile.controller.js";
 import { verifyToken } from '../middleware/verifyToken.js';
 
 const router = express.Router()

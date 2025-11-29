@@ -56,8 +56,8 @@ import {
   deleteAdditionalDocument
 } from "../../controllers/admin/vendor.controller.js";
 import { createBanner, deleteBanner, getAllBanners, toggleStatus, updateBanner } from "../../controllers/admin/adBanner.controller.js";
-import { deleteReferrals, getReferrals, updateReferralStatus } from "../../controllers/referral.controller.js";
-import { bulkUpdateContent, deleteContent, getAllContent,getContentByKey,getLandingPageStructure,upsertContent } from "../../controllers/admin/pages.controller.js";
+import { deleteReferrals, getReferrals, updateReferralStatus } from "../../controllers/user/referral.controller.js";
+import { bulkUpdateContent, deleteContent, getAllContent, getContentByKey, getLandingPageStructure, upsertContent } from "../../controllers/admin/pages.controller.js";
 import { adminGetAllLeads, adminUpdateLeadStatus, adminDeleteLead } from "../../controllers/admin/lead.controller.js";
 
 const router = express.Router();

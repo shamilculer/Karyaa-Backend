@@ -26,18 +26,18 @@ const contentSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-contentSchema.index({ key: 1 });
+// Index already created by unique: true on key field
 contentSchema.index({ type: 1 });
 
-contentSchema.statics.getByKey = async function(key) {
+contentSchema.statics.getByKey = async function (key) {
   return await this.findOne({ key });
 };
 
-contentSchema.statics.getByKeys = async function(keys) {
+contentSchema.statics.getByKeys = async function (keys) {
   return await this.find({ key: { $in: keys } });
 };
 
-contentSchema.statics.getByType = async function(type) {
+contentSchema.statics.getByType = async function (type) {
   return await this.find({ type }).sort({ key: 1 });
 };
 

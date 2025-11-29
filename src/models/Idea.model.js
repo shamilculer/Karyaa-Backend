@@ -7,7 +7,7 @@ const ideaSchema = new mongoose.Schema(
       required: [true, "Idea title is required"],
       trim: true,
     },
-    slug: { 
+    slug: {
       type: String,
       unique: true,
       lowercase: true,
@@ -28,12 +28,12 @@ const ideaSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, 
+    timestamps: true,
   }
 );
 
 ideaSchema.index({ category: 1 });
-ideaSchema.index({ slug: 1 });
+// Index already created by unique: true on slug field
 
 ideaSchema.pre("save", function (next) {
   if (this.isModified("title") || !this.slug) {

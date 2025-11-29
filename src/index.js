@@ -4,24 +4,24 @@ import cors from 'cors';
 
 import connectDB from './config/db.js';
 
-import utilRoutes from './routes/util.route.js';
+import utilRoutes from './routes/shared/utils.routes.js';
 import userRoutes from './routes/user.routes.js';
-import blogRoutes from "./routes/blog.route.js"
-import ideaRoutes from "./routes/idea.routes.js"
-import subCategoryRoutes from "./routes/subCategory.routes.js"
-import categoryRoutes from "./routes/category.routes.js"
+import blogRoutes from "./routes/public/blog.routes.js"
+import ideaRoutes from "./routes/public/idea.routes.js"
+import subCategoryRoutes from "./routes/public/subcategory.routes.js"
+import categoryRoutes from "./routes/public/category.routes.js"
 import vendorRoutes from "./routes/vendor.routes.js"
-import reviewRoutes from "./routes/review.route.js"
-import leadRoutes from "./routes/lead.route.js"
-import ticketRoutes from "./routes/ticket.route.js"
-import galleryRoutes from "./routes/gallery.routes.js"
-import packageRoutes from "./routes/package.routes.js"
+import reviewRoutes from "./routes/shared/reviews.routes.js"
+import leadRoutes from "./routes/vendor/leads.routes.js"
+import ticketRoutes from "./routes/vendor/tickets.routes.js"
+import galleryRoutes from "./routes/vendor/gallery.routes.js"
+import packageRoutes from "./routes/vendor/packages.routes.js"
 import adminRoutes from "./routes/admin/admin.routes.js"
-import bundleRoutes from "./routes/bundle.routes.js"
-import bannerRoutes from "./routes/adBanner.routes.js"
-import brandDetailRoutes from "./routes/brandDetails.routes.js"
-import referralRoutes from "./routes/refferral.routes.js"
-import contentRoutes from "./routes/pages.routes.js"
+import bundleRoutes from "./routes/admin/bundles.routes.js"
+import bannerRoutes from "./routes/admin/banners.routes.js"
+import brandDetailRoutes from "./routes/shared/brandDetails.routes.js"
+import referralRoutes from "./routes/user/referral.routes.js"
+import contentRoutes from "./routes/public/pages.routes.js"
 
 
 import bundleStatsRoute from "./routes/admin/analytics/bundleAnalytics.routes.js"
@@ -39,7 +39,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors({origin : process.env.CLIENT_URL, credentials : true}))
+app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }))
 app.use(express.json());
 app.use(cookieParser());
 
