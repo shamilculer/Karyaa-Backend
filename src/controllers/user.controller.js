@@ -329,7 +329,7 @@ export const toggleSavedVendor = async (req, res) => {
 export const getUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select(
-      "-password -passwordChangedAt -passwordResetToken -passwordResetExpires -savedVendors -role -isVerified"
+      "-password -passwordChangedAt -passwordResetToken -passwordResetExpires -role -isVerified"
     );
 
     if (!user) {

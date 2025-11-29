@@ -17,170 +17,170 @@ import bcrypt from "bcrypt"
  * @access Public
  */
 export const registerVendor = async (req, res) => {
-    const {
-      ownerName,
-      ownerProfileImage,
-      email,
-      phoneNumber,
-      password,
-      isInternational,
-      // UAE-specific fields
-      tradeLicenseNumber,
-      tradeLicenseCopy,
-      personalEmiratesIdNumber,
-      emiratesIdCopy,
-      // NEW: International-specific fields
-      businessLicenseCopy,
-      passportOrIdCopy,
-      // Common business fields
-      businessName,
-      businessLogo,
-      tagline,
-      businessDescription,
-      whatsAppNumber,
-      pricingStartingFrom,
-      mainCategory,
-      subCategories,
-      occasionsServed,
-      selectedBundle,
-      address,
-      websiteLink,
-      facebookLink,
-      instagramLink,
-      twitterLink,
-    } = req.body;
-  
-  
-    try {
-      // Check for existing vendor conflicts
-      const conflictQuery = { $or: [{ email }] };
-      
-      // Only check tradeLicenseNumber if vendor is not international
-      if (!isInternational && tradeLicenseNumber) {
-        conflictQuery.$or.push({ tradeLicenseNumber });
-      }
-      
-      // NOTE: We generally avoid checking for duplicates on international documents
-      // (like passport or business license copy URLs) as they may not be unique
-      // identifiers like a UAE Trade License Number, or we rely on the Mongoose 
-      // unique index check for Business Name (which is done on save).
-  
-      const existingVendor = await Vendor.findOne(conflictQuery);
-  
-      if (existingVendor) {
-        let message =
-          "A vendor account already exists with the information provided.";
-  
-        if (
-          existingVendor.email === email &&
-          existingVendor.tradeLicenseNumber === tradeLicenseNumber
-        ) {
-          message =
-            "Your email and Trade License Number are both already registered with an existing vendor account.";
-        } else if (existingVendor.email === email) {
-          message =
-            "The email address you entered is already registered. Please use a different email or log in.";
-        } else if (existingVendor.tradeLicenseNumber === tradeLicenseNumber) {
-          message =
-            "The Trade License Number you entered is already registered with another account.";
-        }
-  
-        return res.status(400).json({
-          success: false,
-          message: message,
-        });
-      }
-  
-      const selectedBundleDoc = await Bundle.findById(selectedBundle);
-  
-  
-      if (!selectedBundleDoc) {
-        return res.status(400).json({
-          success: false,
-          message: "The selected bundle does not exist.",
-        });
-      }
-  
-      if (selectedBundleDoc.status !== "active") {
-        return res.status(400).json({
-          success: false,
-          message: "The selected bundle is currently not available.",
-        });
-      }
-  
-      // Check if bundle has reached capacity
-      if (selectedBundleDoc.hasReachedCapacity()) {
-        return res.status(400).json({
-          success: false,
-          message: `The selected bundle has reached its maximum capacity. Please choose a different bundle.`,
-        });
-      }
-  
-      // Check if bundle is available for international vendors
-      if (isInternational && !selectedBundleDoc.isAvailableForInternational) {
-        return res.status(400).json({
-          success: false,
-          message: "The selected bundle is not available for international vendors.",
-        });
-      }
-  
-      // Coordinate fetching logic
-      let coordinates = address?.coordinates;
-  
-      const finalAddress = {
-        ...address,
-        country: address?.country || (isInternational ? "" : "UAE"),
-      };
-  
-      // Fetch coordinates if not provided
-      if (!coordinates || (!coordinates.latitude && !coordinates.longitude)) {
-        const fetchedCoords = await getCoordinatesFromAddress(finalAddress);
-  
-        if (fetchedCoords) {
-          coordinates = fetchedCoords;
-        } else {
-          console.warn("Geocoding failed for the provided address.");
-        }
-      }
-  
-      finalAddress.coordinates = coordinates;
-  
-      // Create new vendor
-      const newVendor = new Vendor({
-        ownerName,
-        ownerProfileImage,
-        email,
-        phoneNumber,
-        password,
-        isInternational: isInternational || false,
-  
-        // Conditionally set UAE fields
-        tradeLicenseNumber: !isInternational ? tradeLicenseNumber : undefined,
-        tradeLicenseCopy: !isInternational ? tradeLicenseCopy : undefined,
-        personalEmiratesIdNumber: !isInternational ? personalEmiratesIdNumber : undefined,
-        emiratesIdCopy: !isInternational ? emiratesIdCopy : undefined,
-  
-        // Conditionally set International fields
-        businessLicenseCopy: isInternational ? businessLicenseCopy : undefined,
-        passportOrIdCopy: isInternational ? passportOrIdCopy : undefined,
-        
-        businessName,
-        businessLogo,
-        tagline,
-        businessDescription,
-        whatsAppNumber,
-        pricingStartingFrom,
-        mainCategory,
-        subCategories,
-        occasionsServed,
-        selectedBundle,
-        address: finalAddress,
-        websiteLink,
-        facebookLink,
-        instagramLink,
-        twitterLink,
-      });
-  
+  const {
+    ownerName,
+    ownerProfileImage,
+    email,
+    phoneNumber,
+    password,
+    isInternational,
+    // UAE-specific fields
+    tradeLicenseNumber,
+    tradeLicenseCopy,
+    personalEmiratesIdNumber,
+    emiratesIdCopy,
+    // NEW: International-specific fields
+    businessLicenseCopy,
+    passportOrIdCopy,
+    // Common business fields
+    businessName,
+    businessLogo,
+    tagline,
+    businessDescription,
+    whatsAppNumber,
+    pricingStartingFrom,
+    mainCategory,
+    subCategories,
+    occasionsServed,
+    selectedBundle,
+    address,
+    websiteLink,
+    facebookLink,
+    instagramLink,
+    twitterLink,
+  } = req.body;
+
+
+  try {
+    // Check for existing vendor conflicts
+    const conflictQuery = { $or: [{ email }] };
+
+    // Only check tradeLicenseNumber if vendor is not international
+    if (!isInternational && tradeLicenseNumber) {
+      conflictQuery.$or.push({ tradeLicenseNumber });
+    }
+
+    // NOTE: We generally avoid checking for duplicates on international documents
+    // (like passport or business license copy URLs) as they may not be unique
+    // identifiers like a UAE Trade License Number, or we rely on the Mongoose 
+    // unique index check for Business Name (which is done on save).
+
+    const existingVendor = await Vendor.findOne(conflictQuery);
+
+    if (existingVendor) {
+      let message =
+        "A vendor account already exists with the information provided.";
+
+      if (
+        existingVendor.email === email &&
+        existingVendor.tradeLicenseNumber === tradeLicenseNumber
+      ) {
+        message =
+          "Your email and Trade License Number are both already registered with an existing vendor account.";
+      } else if (existingVendor.email === email) {
+        message =
+          "The email address you entered is already registered. Please use a different email or log in.";
+      } else if (existingVendor.tradeLicenseNumber === tradeLicenseNumber) {
+        message =
+          "The Trade License Number you entered is already registered with another account.";
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: message,
+      });
+    }
+
+    const selectedBundleDoc = await Bundle.findById(selectedBundle);
+
+
+    if (!selectedBundleDoc) {
+      return res.status(400).json({
+        success: false,
+        message: "The selected bundle does not exist.",
+      });
+    }
+
+    if (selectedBundleDoc.status !== "active") {
+      return res.status(400).json({
+        success: false,
+        message: "The selected bundle is currently not available.",
+      });
+    }
+
+    // Check if bundle has reached capacity
+    if (selectedBundleDoc.hasReachedCapacity()) {
+      return res.status(400).json({
+        success: false,
+        message: `The selected bundle has reached its maximum capacity. Please choose a different bundle.`,
+      });
+    }
+
+    // Check if bundle is available for international vendors
+    if (isInternational && !selectedBundleDoc.isAvailableForInternational) {
+      return res.status(400).json({
+        success: false,
+        message: "The selected bundle is not available for international vendors.",
+      });
+    }
+
+    // Coordinate fetching logic
+    let coordinates = address?.coordinates;
+
+    const finalAddress = {
+      ...address,
+      country: address?.country || (isInternational ? "" : "UAE"),
+    };
+
+    // Fetch coordinates if not provided
+    if (!coordinates || (!coordinates.latitude && !coordinates.longitude)) {
+      const fetchedCoords = await getCoordinatesFromAddress(finalAddress);
+
+      if (fetchedCoords) {
+        coordinates = fetchedCoords;
+      } else {
+        console.warn("Geocoding failed for the provided address.");
+      }
+    }
+
+    finalAddress.coordinates = coordinates;
+
+    // Create new vendor
+    const newVendor = new Vendor({
+      ownerName,
+      ownerProfileImage,
+      email,
+      phoneNumber,
+      password,
+      isInternational: isInternational || false,
+
+      // Conditionally set UAE fields
+      tradeLicenseNumber: !isInternational ? tradeLicenseNumber : undefined,
+      tradeLicenseCopy: !isInternational ? tradeLicenseCopy : undefined,
+      personalEmiratesIdNumber: !isInternational ? personalEmiratesIdNumber : undefined,
+      emiratesIdCopy: !isInternational ? emiratesIdCopy : undefined,
+
+      // Conditionally set International fields
+      businessLicenseCopy: isInternational ? businessLicenseCopy : undefined,
+      passportOrIdCopy: isInternational ? passportOrIdCopy : undefined,
+
+      businessName,
+      businessLogo,
+      tagline,
+      businessDescription,
+      whatsAppNumber,
+      pricingStartingFrom,
+      mainCategory,
+      subCategories,
+      occasionsServed,
+      selectedBundle,
+      address: finalAddress,
+      websiteLink,
+      facebookLink,
+      instagramLink,
+      twitterLink,
+    });
+
     await newVendor.save();
 
     res.status(201).json({
@@ -198,6 +198,18 @@ export const registerVendor = async (req, res) => {
     });
   } catch (error) {
     console.error("Vendor registration error:", error);
+
+    // Handle duplicate key errors (e.g., businessName)
+    if (error.code === 11000) {
+      if (error.keyPattern && error.keyPattern.businessName) {
+        return res.status(400).json({
+          success: false,
+          message: "A vendor with this business name already exists. Please choose a different name.",
+        });
+      }
+      // Handle other potential duplicates if necessary (though most are handled by the initial check)
+    }
+
     if (error.name === "ValidationError") {
       const messages = Object.values(error.errors).map((val) => val.message);
       return res.status(400).json({
@@ -293,17 +305,17 @@ export const getApprovedVendors = async (req, res) => {
 
   // 2. Destructure Query Parameters
   const {
-      search,
-      mainCategory,
-      subCategory,
-      minPrice,
-      maxPrice,
-      location,
-      isSponsored,
-      isRecommended,
-      rating,
-      sort,
-      occasion,
+    search,
+    mainCategory,
+    subCategory,
+    minPrice,
+    maxPrice,
+    location,
+    isSponsored,
+    isRecommended,
+    rating,
+    sort,
+    occasion,
   } = req.query;
 
 
@@ -315,68 +327,68 @@ export const getApprovedVendors = async (req, res) => {
 
   // SEARCH
   if (search) {
-      const searchRegex = new RegExp(search, "i");
-      filterClauses.push({
-          $or: [
-              { businessName: { $regex: searchRegex } },
-              { "address.city": { $regex: searchRegex } },
-          ],
-      });
+    const searchRegex = new RegExp(search, "i");
+    filterClauses.push({
+      $or: [
+        { businessName: { $regex: searchRegex } },
+        { "address.city": { $regex: searchRegex } },
+      ],
+    });
   }
 
   // ✅ LOCATION (UAE CITY or INTERNATIONAL)
   if (location) {
     if (location.toLowerCase() === "international") {
-        filterClauses.push({ isInternational: true });
+      filterClauses.push({ isInternational: true });
     } else {
-        const locRegex = new RegExp(`${location}`, "i");
-        filterClauses.push({
-            $or: [
-                { "address.city": locRegex },
-                { "address.area": locRegex },
-                { "address.street": locRegex },
-            ]
-        });
+      const locRegex = new RegExp(`${location}`, "i");
+      filterClauses.push({
+        $or: [
+          { "address.city": locRegex },
+          { "address.area": locRegex },
+          { "address.street": locRegex },
+        ]
+      });
     }
-}
+  }
 
   // MAIN CATEGORY
   if (mainCategory) {
-      try {
-          const mainCategoryDoc = await Category.findOne({ slug: mainCategory })
-              .select("_id")
-              .lean();
+    try {
+      const mainCategoryDoc = await Category.findOne({ slug: mainCategory })
+        .select("_id")
+        .lean();
 
-          if (mainCategoryDoc) {
-              filterClauses.push({ mainCategory: { $in: [mainCategoryDoc._id] } });
-          } else {
-              filterClauses.push({ _id: null });
-          }
-      } catch (error) {
-          console.error("Failed to translate MainCategory slug:", error);
+      if (mainCategoryDoc) {
+        filterClauses.push({ mainCategory: { $in: [mainCategoryDoc._id] } });
+      } else {
+        filterClauses.push({ _id: null });
       }
+    } catch (error) {
+      console.error("Failed to translate MainCategory slug:", error);
+    }
   }
 
   // SUB-CATEGORIES
   if (subCategory) {
-      const subSlugs = subCategory.split(",").filter(Boolean);
-      if (subSlugs.length > 0) {
-          try {
-              const subDocs = await SubCategory.find({
-                  slug: { $in: subSlugs },
-              })
-                  .select("_id")
-                  .lean();
+    const subSlugs = subCategory.split(",").filter(Boolean);
+    if (subSlugs.length > 0) {
+      try {
+        const subDocs = await SubCategory.find({
+          slug: { $in: subSlugs },
+        })
+          .select("_id")
+          .lean();
 
-              const subIds = subDocs.map((d) => d._id);
+        const subIds = subDocs.map((d) => d._id);
 
-              if (subIds.length > 0) {
-                  filterClauses.push({ subCategories: { $in: subIds } });
-              }
-          } catch (error) {
-              console.error("Failed to translate SubCategory slugs:", error);
-          }
+        if (subIds.length > 0) {
+          filterClauses.push({ subCategories: { $in: subIds } });
+        }
+      } catch (error) {
+        console.error("Failed to translate SubCategory slugs:", error);
       }
+    }
   }
 
   // PRICE FILTER
@@ -384,27 +396,27 @@ export const getApprovedVendors = async (req, res) => {
   if (minPrice && !isNaN(minPrice)) priceFilter.$gte = parseFloat(minPrice);
   if (maxPrice && !isNaN(maxPrice)) priceFilter.$lte = parseFloat(maxPrice);
   if (Object.keys(priceFilter).length > 0) {
-      filterClauses.push({ pricingStartingFrom: priceFilter });
+    filterClauses.push({ pricingStartingFrom: priceFilter });
   }
 
   // SPONSORED
   if (isSponsored === "true") {
-      filterClauses.push({ isSponsored: true });
+    filterClauses.push({ isSponsored: true });
   }
 
   // RECOMMENDED
   if (isRecommended === "true") {
-      filterClauses.push({ isRecommended: true });
+    filterClauses.push({ isRecommended: true });
   }
 
   // RATING
   if (rating && !isNaN(rating)) {
-      filterClauses.push({ averageRating: { $gte: parseFloat(rating) } });
+    filterClauses.push({ averageRating: { $gte: parseFloat(rating) } });
   }
 
   if (occasion && occasion !== "none" && occasion !== "all") {
     filterClauses.push({ occasionsServed: occasion });
-}
+  }
 
   const query = { $and: filterClauses };
 
@@ -414,104 +426,104 @@ export const getApprovedVendors = async (req, res) => {
   let sortOptions = { createdAt: -1 };
 
   if (sort) {
-      switch (sort) {
-          case "rating-high":
-              sortOptions = { averageRating: -1, createdAt: -1 };
-              break;
-          case "rating-low":
-              sortOptions = { averageRating: 1, createdAt: -1 };
-              break;
-          case "price-low":
-              sortOptions = { pricingStartingFrom: 1, createdAt: -1 };
-              break;
-          case "price-high":
-              sortOptions = { pricingStartingFrom: -1, createdAt: -1 };
-              break;
-      }
+    switch (sort) {
+      case "rating-high":
+        sortOptions = { averageRating: -1, createdAt: -1 };
+        break;
+      case "rating-low":
+        sortOptions = { averageRating: 1, createdAt: -1 };
+        break;
+      case "price-low":
+        sortOptions = { pricingStartingFrom: 1, createdAt: -1 };
+        break;
+      case "price-high":
+        sortOptions = { pricingStartingFrom: -1, createdAt: -1 };
+        break;
+    }
   }
 
   try {
-      const needsPagination = req.query.page !== undefined;
-      let totalVendors = 0;
-      let totalPages = 1;
+    const needsPagination = req.query.page !== undefined;
+    let totalVendors = 0;
+    let totalPages = 1;
 
-      if (needsPagination) {
-          totalVendors = await Vendor.countDocuments(query);
-          totalPages = Math.ceil(totalVendors / limit);
-      }
+    if (needsPagination) {
+      totalVendors = await Vendor.countDocuments(query);
+      totalPages = Math.ceil(totalVendors / limit);
+    }
 
-      const vendors = await Vendor.find(query)
-          .select(
-              "businessName slug businessDescription businessLogo address.city averageRating  pricingStartingFrom  isRecommended tagline address.coordinates referenceId"
-          )
-          .populate("mainCategory", "name slug")
-          .sort(sortOptions)
-          .skip(skip)
-          .limit(limit)
-          .lean();
+    const vendors = await Vendor.find(query)
+      .select(
+        "businessName slug businessDescription businessLogo address.city averageRating  pricingStartingFrom  isRecommended tagline address.coordinates referenceId"
+      )
+      .populate("mainCategory", "name slug")
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(limit)
+      .lean();
 
-      // ---------------------------------------------------
-      // --- C. Fetch and Attach Gallery Items ---
-      // ---------------------------------------------------
+    // ---------------------------------------------------
+    // --- C. Fetch and Attach Gallery Items ---
+    // ---------------------------------------------------
 
-      if (vendors.length > 0) {
-          const vendorIds = vendors.map((v) => v._id);
+    if (vendors.length > 0) {
+      const vendorIds = vendors.map((v) => v._id);
 
-          const galleryItems = await GalleryItem.find({
-              vendor: { $in: vendorIds },
-          })
-              .select("url vendor isFeatured")
-              .sort({ orderIndex: 1, createdAt: -1 })
-              .lean();
+      const galleryItems = await GalleryItem.find({
+        vendor: { $in: vendorIds },
+      })
+        .select("url vendor isFeatured")
+        .sort({ orderIndex: 1, createdAt: -1 })
+        .lean();
 
-          const galleryMap = galleryItems.reduce((acc, item) => {
-              const vendorId = item.vendor.toString();
-              if (!acc[vendorId]) {
-                  acc[vendorId] = [];
-              }
-              acc[vendorId].push({
-                  url: item.url,
-                  isFeatured: item.isFeatured,
-              });
-              return acc;
-          }, {});
+      const galleryMap = galleryItems.reduce((acc, item) => {
+        const vendorId = item.vendor.toString();
+        if (!acc[vendorId]) {
+          acc[vendorId] = [];
+        }
+        acc[vendorId].push({
+          url: item.url,
+          isFeatured: item.isFeatured,
+        });
+        return acc;
+      }, {});
 
-          vendors.forEach((vendor) => {
-              vendor.gallery = galleryMap[vendor._id.toString()] || [];
-          });
-      }
+      vendors.forEach((vendor) => {
+        vendor.gallery = galleryMap[vendor._id.toString()] || [];
+      });
+    }
 
-      // ---------------------------------------------------
-      // --- D. Response Handling ---
-      // ---------------------------------------------------
+    // ---------------------------------------------------
+    // --- D. Response Handling ---
+    // ---------------------------------------------------
 
-      if (!needsPagination) {
-          return res.status(200).json({
-              success: true,
-              message: `Limited list of ${vendors.length} approved vendors fetched with gallery.`,
-              data: vendors,
-          });
-      }
-
+    if (!needsPagination) {
       return res.status(200).json({
-          success: true,
-          message: "Approved vendors fetched successfully with gallery.",
-          data: vendors,
-          pagination: {
-              totalVendors,
-              totalPages,
-              currentPage: page,
-              limit,
-              hasNextPage: page < totalPages,
-              hasPrevPage: page > 1,
-          },
+        success: true,
+        message: `Limited list of ${vendors.length} approved vendors fetched with gallery.`,
+        data: vendors,
       });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Approved vendors fetched successfully with gallery.",
+      data: vendors,
+      pagination: {
+        totalVendors,
+        totalPages,
+        currentPage: page,
+        limit,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
   } catch (error) {
-      console.error("Error fetching approved vendors:", error);
-      res.status(500).json({
-          success: false,
-          message: "Server error while fetching vendors.",
-      });
+    console.error("Error fetching approved vendors:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching vendors.",
+    });
   }
 };
 
@@ -535,24 +547,24 @@ export const getSingleVendor = async (req, res) => {
     }
     // Add the required status filter
     query.vendorStatus = "approved";
-    
+
     const vendor = await Vendor.findOne(query)
       .select("-password -tradeLicenseCopy -tempUploadToken -__v -customFeatures -customDuration -subscriptionEndDate -subscriptionStartDate -selectedBundle -emiratesIdCopy -personalEmiratesIdNumber -tradeLicenseNumber")
       .populate("subCategories");
-    
+
     if (!vendor) {
       return res.status(404).json({
         success: false,
         message: "Vendor not found or is not currently approved.",
       });
     }
-    
+
     const vendorData = vendor.toJSON();
-    
+
     res.status(200).json({
       success: true,
       message: "Vendor fetched successfully.",
-      data: vendorData, 
+      data: vendorData,
     });
   } catch (error) {
     console.error("Error fetching single vendor:", error);
@@ -704,7 +716,7 @@ export const getVendorReviewStats = async (req, res) => {
 export const getVendorCities = async (req, res) => {
   try {
     const cities = await Vendor.distinct('address.city');
-    
+
     res.status(200).json({
       success: true,
       data: cities.filter(city => city) // Remove null/empty values
@@ -716,121 +728,121 @@ export const getVendorCities = async (req, res) => {
 
 
 export const getVendorProfileForEdit = async (req, res) => {
-  const vendorId = req.user.id; 
-  
+  const vendorId = req.user.id;
+
   try {
-      const vendor = await Vendor.findById(vendorId)
-          .select("-password -__v -tempUploadToken -selectedBundle -subscriptionStartDate -subscriptionEndDate -customDuration -customFeatures -vendorStatus -role -isRecommended -isSponsored -ratingBreakdown -reviewCount -averageRating") 
-          .populate("mainCategory", "name slug")
-          .populate("subCategories", "name slug");
-      
-      if (!vendor) {
-          return res.status(404).json({
-              success: false,
-              message: "Vendor profile not found.",
-          });
-      }
-      
-      res.status(200).json({
-          success: true,
-          message: "Vendor profile data fetched for editing.",
-          data: vendor,
+    const vendor = await Vendor.findById(vendorId)
+      .select("-password -__v -tempUploadToken -selectedBundle -subscriptionStartDate -subscriptionEndDate -customDuration -customFeatures -vendorStatus -role -isRecommended -isSponsored -ratingBreakdown -reviewCount -averageRating")
+      .populate("mainCategory", "name slug")
+      .populate("subCategories", "name slug");
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor profile not found.",
       });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Vendor profile data fetched for editing.",
+      data: vendor,
+    });
   } catch (error) {
-      console.error(`Error fetching vendor profile for ID ${vendorId}:`, error);
-      res.status(500).json({
-          success: false,
-          message: "Server error while fetching vendor profile.",
-      });
+    console.error(`Error fetching vendor profile for ID ${vendorId}:`, error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching vendor profile.",
+    });
   }
 };
 
 
 export const updateVendor = async (req, res) => {
-  const vendorId = req.user.id; 
-  
+  const vendorId = req.user.id;
+
   const updateData = { ...req.body };
-  
+
 
   if (updateData.password) {
-      delete updateData.password;
-      console.warn(`Attempted to update password via general update route for vendor ID: ${vendorId}. Action blocked.`);
+    delete updateData.password;
+    console.warn(`Attempted to update password via general update route for vendor ID: ${vendorId}. Action blocked.`);
   }
 
-  delete updateData.vendorStatus; 
-  delete updateData.role; 
-  
+  delete updateData.vendorStatus;
+  delete updateData.role;
+
   const isInternational = updateData.isInternational !== undefined ? updateData.isInternational : req.user.isInternational;
 
   if (isInternational) {
-      updateData.tradeLicenseNumber = undefined;
-      updateData.tradeLicenseCopy = undefined;
-      updateData.personalEmiratesIdNumber = undefined;
-      updateData.emiratesIdCopy = undefined;
+    updateData.tradeLicenseNumber = undefined;
+    updateData.tradeLicenseCopy = undefined;
+    updateData.personalEmiratesIdNumber = undefined;
+    updateData.emiratesIdCopy = undefined;
   }
 
 
   try {
-      let coordinates;
-      let finalAddress = updateData.address;
+    let coordinates;
+    let finalAddress = updateData.address;
 
-      if (finalAddress) {
-          coordinates = finalAddress.coordinates;
-          
-          finalAddress.country = finalAddress.country || (isInternational ? "" : "UAE");
-          
-          if (!coordinates || (!coordinates.latitude && !coordinates.longitude)) {
-              const fetchedCoords = await getCoordinatesFromAddress(finalAddress);
+    if (finalAddress) {
+      coordinates = finalAddress.coordinates;
 
-              if (fetchedCoords) {
-                  coordinates = fetchedCoords;
-              } else {
-                  console.warn(`Geocoding failed for the provided address for vendor ${vendorId}.`);
-              }
-          }
+      finalAddress.country = finalAddress.country || (isInternational ? "" : "UAE");
 
-          finalAddress.coordinates = coordinates;
-          updateData.address = finalAddress; // Update the main object with the new address structure
+      if (!coordinates || (!coordinates.latitude && !coordinates.longitude)) {
+        const fetchedCoords = await getCoordinatesFromAddress(finalAddress);
+
+        if (fetchedCoords) {
+          coordinates = fetchedCoords;
+        } else {
+          console.warn(`Geocoding failed for the provided address for vendor ${vendorId}.`);
+        }
       }
 
+      finalAddress.coordinates = coordinates;
+      updateData.address = finalAddress; // Update the main object with the new address structure
+    }
 
-      const updatedVendor = await Vendor.findByIdAndUpdate(
-          vendorId,
-          { $set: updateData },
-          { new: true, runValidators: true }
-      )
-      .select("businessName businessLogo role slug tagline selectedBundle") 
 
-      if (!updatedVendor) {
-          return res.status(404).json({
-              success: false,
-              message: "Vendor not found.",
-          });
-      }
+    const updatedVendor = await Vendor.findByIdAndUpdate(
+      vendorId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    )
+      .select("businessName businessLogo role slug tagline selectedBundle")
 
-      // 5. Send success response
-      res.status(200).json({
-          success: true,
-          message: "Vendor profile updated successfully.",
-          data: updatedVendor,
+    if (!updatedVendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found.",
       });
+    }
+
+    // 5. Send success response
+    res.status(200).json({
+      success: true,
+      message: "Vendor profile updated successfully.",
+      data: updatedVendor,
+    });
 
   } catch (error) {
-      console.error(`Vendor update failed for ID ${vendorId}:`, error);
+    console.error(`Vendor update failed for ID ${vendorId}:`, error);
 
-      // Handle Mongoose Validation Errors
-      if (error.name === "ValidationError") {
-          const messages = Object.values(error.errors).map((val) => val.message);
-          return res.status(400).json({
-              success: false,
-              message: `Validation Error: ${messages.join(", ")}`,
-          });
-      }
-
-      // Handle other errors (e.g., Database/Server Errors)
-      res.status(500).json({
-          success: false,
-          message: "System Error: Failed to update vendor profile.",
+    // Handle Mongoose Validation Errors
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((val) => val.message);
+      return res.status(400).json({
+        success: false,
+        message: `Validation Error: ${messages.join(", ")}`,
       });
+    }
+
+    // Handle other errors (e.g., Database/Server Errors)
+    res.status(500).json({
+      success: false,
+      message: "System Error: Failed to update vendor profile.",
+    });
   }
 };

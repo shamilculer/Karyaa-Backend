@@ -18,7 +18,7 @@ const router = express.Router();
 
 router.get("/vendor/:vendorId", getVendorActiveReviews)
 router.post("/new/:vendorId", verifyToken, createReview);
-router.put("/:reviewId", verifyToken, updateReview); 
+router.put("/:reviewId", verifyToken, updateReview);
 router.delete("/:reviewId", verifyToken, deleteReview);
 
 router.get('/vendor/all/:vendorId', verifyVendor, getAllVendorReviews)

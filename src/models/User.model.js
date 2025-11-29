@@ -18,7 +18,6 @@ export const BaseUserSchemaDefinition = {
     mobileNumber: {
         type: String,
         required: [true, 'Mobile Number is required'],
-        unique: true,
         trim: true,
         match: [
             /^\+?[0-9\s-()]{7,20}$/,

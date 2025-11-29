@@ -40,7 +40,7 @@ const reviewSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-reviewSchema.index({ vendor: 1, user: 1 }, { unique: true }); 
+reviewSchema.index({ vendor: 1, user: 1 }); 
 
 // ✅ FIXED: Store previous state in pre-save hook
 reviewSchema.pre("save", async function (next) {
