@@ -135,9 +135,14 @@ export const getLeadSourceBreakdown = async (req, res) => {
 
         // Format the response with friendly names
         const sourceLabels = {
+            homepage: "Homepage",
             category: "Category Page",
+            subcategory: "Subcategory Page",
             search: "Search Results",
-            featured: "Featured Vendors",
+            recommended: "Recommended Sections",
+            vendor_page: "Similar Vendors",
+            saved: "Saved Vendors",
+            shared: "Shared Link",
             direct: "Direct Link",
             other: "Other",
         };
@@ -192,9 +197,14 @@ export const getProfileViewSourceBreakdown = async (req, res) => {
 
         // Format the response with friendly names
         const sourceLabels = {
+            homepage: "Homepage",
             category: "Category Page",
+            subcategory: "Subcategory Page",
             search: "Search Results",
-            featured: "Featured Vendors",
+            recommended: "Recommended Sections",
+            vendor_page: "Similar Vendors",
+            saved: "Saved Vendors",
+            shared: "Shared Link",
             direct: "Direct Link",
             other: "Other",
         };
@@ -388,8 +398,38 @@ export const getReviewInsights = async (req, res) => {
         const recentReviews = await Review.find({ vendor: vendorId })
             .populate("user", "username profileImage")
             .sort({ createdAt: -1 })
-            .limit(3)
-            .select("rating comment createdAt user");
+            .limit(2)
+            .select("rating comment createdAt user status flaggedForRemoval");
+
+        // Get review counts by status
+        const statusCounts = await Review.aggregate([
+            { $match: { vendor: new mongoose.Types.ObjectId(vendorId) } },
+            {
+                $group: {
+                    _id: "$status",
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        // Get flagged reviews count
+        const flaggedCount = await Review.countDocuments({
+            vendor: vendorId,
+            flaggedForRemoval: true
+        });
+
+        // Format status counts
+        const reviewStatusCounts = {
+            Approved: 0,
+            Pending: 0,
+            Rejected: 0
+        };
+
+        statusCounts.forEach(item => {
+            if (reviewStatusCounts.hasOwnProperty(item._id)) {
+                reviewStatusCounts[item._id] = item.count;
+            }
+        });
 
         res.status(200).json({
             success: true,
@@ -398,6 +438,8 @@ export const getReviewInsights = async (req, res) => {
                 reviewCount: vendor.reviewCount || 0,
                 ratingBreakdown: vendor.ratingBreakdown || {},
                 recentReviews: recentReviews || [],
+                reviewStatusCounts,
+                flaggedCount
             },
         });
     } catch (error) {
@@ -584,6 +626,122 @@ export const getViewsVsEnquiries = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to fetch comparison data.",
+        });
+    }
+};
+/**
+ * @desc Get overview stats (Enquiries, Views, Reviews, WhatsApp)
+ * @route GET /api/v1/analytics/vendor/overview-stats
+ * @access Private (Vendor)
+ */
+import WhatsAppClick from "../../models/WhatsAppClick.model.js";
+
+// ... existing imports ...
+
+/**
+ * @desc Track WhatsApp click (Public endpoint)
+ * @route POST /api/v1/analytics/track-whatsapp
+ * @access Public
+ */
+export const trackWhatsAppClick = async (req, res) => {
+    try {
+        const { vendorId } = req.body;
+
+        if (!vendorId) {
+            return res.status(400).json({
+                success: false,
+                message: "Vendor ID is required.",
+            });
+        }
+
+        // Get IP address from request
+        const ip =
+            req.headers["x-forwarded-for"]?.split(",")[0] ||
+            req.connection.remoteAddress ||
+            req.socket.remoteAddress ||
+            "unknown";
+
+        // Get user agent
+        const userAgent = req.headers["user-agent"] || "";
+
+        // Get user ID if authenticated (optional)
+        const userId = req.user?.id || null;
+
+        await WhatsAppClick.create({
+            vendor: vendorId,
+            user: userId,
+            ip,
+            userAgent,
+        });
+
+        res.status(200).json({
+            success: true,
+            message: "WhatsApp click recorded.",
+        });
+    } catch (error) {
+        console.error("Error tracking WhatsApp click:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to track WhatsApp click.",
+        });
+    }
+};
+
+/**
+ * @desc Get overview stats (Enquiries, Views, Reviews, WhatsApp)
+ * @route GET /api/v1/analytics/vendor/overview-stats
+ * @access Private (Vendor)
+ */
+export const getOverviewStats = async (req, res) => {
+    try {
+        const vendorId = req.user.id;
+        const { clientDate } = req.query; // Expect client date ISO string
+
+        // Use client date if provided, otherwise server time
+        const now = clientDate ? new Date(clientDate) : new Date();
+
+        // Calculate start and end of the CURRENT month based on client time
+        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+        // Calculate start and end of the PREVIOUS month
+        const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+        // Helper to get counts
+        const getCounts = async (Model, dateField) => {
+            const current = await Model.countDocuments({
+                vendor: new mongoose.Types.ObjectId(vendorId),
+                [dateField]: { $gte: currentMonthStart, $lte: currentMonthEnd }
+            });
+
+            const previous = await Model.countDocuments({
+                vendor: new mongoose.Types.ObjectId(vendorId),
+                [dateField]: { $gte: previousMonthStart, $lte: previousMonthEnd }
+            });
+
+            return { current, previous };
+        };
+
+        const enquiries = await getCounts(Lead, 'createdAt');
+        const views = await getCounts(ProfileView, 'viewedAt');
+        const reviews = await getCounts(Review, 'createdAt');
+        const whatsapp = await getCounts(WhatsAppClick, 'clickedAt');
+
+        res.status(200).json({
+            success: true,
+            data: {
+                enquiries,
+                views,
+                reviews,
+                whatsapp
+            }
+        });
+    } catch (error) {
+        console.error("Error fetching overview stats:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch overview stats.",
         });
     }
 };

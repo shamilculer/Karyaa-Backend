@@ -10,6 +10,8 @@ import {
     trackProfileView,
     getProfileViewsOverTime,
     getViewsVsEnquiries,
+    getOverviewStats,
+    trackWhatsAppClick,
 } from "../../controllers/vendor/analytics.controller.js";
 import { verifyVendor } from "../../middleware/verifyVendor.js";
 
@@ -32,5 +34,7 @@ router.post("/track-view", trackProfileView);
 router.get("/profile-views", verifyVendor, getProfileViewsOverTime);
 router.get("/profile-view-source", verifyVendor, getProfileViewSourceBreakdown);
 router.get("/views-vs-enquiries", verifyVendor, getViewsVsEnquiries);
+router.get("/vendor/overview-stats", verifyVendor, getOverviewStats);
+router.post("/track-whatsapp", trackWhatsAppClick);
 
 export default router;

@@ -33,7 +33,18 @@ const profileViewSchema = new mongoose.Schema(
         },
         source: {
             type: String,
-            enum: ["category", "search", "featured", "direct", "other"],
+            enum: [
+                "homepage",         // Homepage regular listings
+                "category",         // Category page list view
+                "subcategory",      // Subcategory page list view
+                "search",           // Search results
+                "recommended",      // Any recommended section (homepage/category/subcategory)
+                "vendor_page",      // Similar vendors carousel on vendor page
+                "saved",            // Saved vendors page
+                "shared",           // Shared link
+                "direct",           // Direct link
+                "other"             // Other sources
+            ],
             default: "direct",
             index: true,
         },

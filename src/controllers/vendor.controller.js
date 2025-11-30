@@ -259,7 +259,7 @@ export const loginVendor = async (req, res) => {
 
 
     // TODO: replace this with 
-    const isMatch = bcrypt.compare(password, vendor.password);
+    const isMatch = await bcrypt.compare(password, vendor.password);
     if (!isMatch) {
       return res
         .status(400)
