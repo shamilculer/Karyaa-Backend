@@ -3,81 +3,81 @@ import mongoose from "mongoose";
 
 export const postLead = async (req, res) => {
     try {
-      const {
-        vendorId,
-        fullName,
-        phoneNumber,
-        email,
-        location,
-        eventType,
-        eventDate,
-        numberOfGuests,
-        message,
-        user,
-      } = req.body
-  
-      if (!vendorId || !fullName || !phoneNumber) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Missing mandatory contact information: Vendor ID, Full Name, and Phone Number are required.",
+        const {
+            vendorId,
+            fullName,
+            phoneNumber,
+            email,
+            location,
+            eventType,
+            eventDate,
+            numberOfGuests,
+            message,
+            user,
+        } = req.body
+
+        if (!vendorId || !fullName || !phoneNumber) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Missing mandatory contact information: Vendor ID, Full Name, and Phone Number are required.",
+            })
+        }
+
+        const newLead = await Lead.create({
+            vendor: vendorId,
+            fullName,
+            phoneNumber,
+            email,
+            location,
+            eventType,
+            eventDate,
+            numberOfGuests,
+            message,
+            user: user || null,
         })
-      }
-  
-      const newLead = await Lead.create({
-        vendor: vendorId,
-        fullName,
-        phoneNumber,
-        email,
-        location,
-        eventType,
-        eventDate,
-        numberOfGuests,
-        message,
-        user: user || null,
-      })
-  
-      return res.status(201).json({
-        success: true,
-        message: `Lead submitted successfully! Your reference ID is ${newLead.referenceId}. The vendor will be in touch shortly.`,
-        data: newLead,
-      })
+
+        return res.status(201).json({
+            success: true,
+            message: `Lead submitted successfully! Your reference ID is ${newLead.referenceId}. The vendor will be in touch shortly.`,
+            data: newLead,
+        })
     } catch (error) {
-      console.error("Error posting lead:", error)
-  
-      if (error.name === "ValidationError") {
-        return res.status(400).json({
-          success: false,
-          message: error.message,
-          errors: error.errors,
+        console.error("Error posting lead:", error)
+
+        if (error.name === "ValidationError") {
+            return res.status(400).json({
+                success: false,
+                message: error.message,
+                errors: error.errors,
+            })
+        }
+
+        res.status(500).json({
+            success: false,
+            message: "Failed to submit lead due to a server error.",
         })
-      }
-  
-      res.status(500).json({
-        success: false,
-        message: "Failed to submit lead due to a server error.",
-      })
     }
-  }
-  
+}
+
 
 export const getVendorLeads = async (req, res) => {
     try {
-        if (!req.user.role === "vendor" || !req.user.id) {
-            return res.status(401).json({ 
-                success: false, 
-                message: "Authentication Required: You must be logged in as a vendor to view leads." 
+        if (req.user.role !== "vendor" || !req.user.id) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication Required: You must be logged in as a vendor to view leads."
             });
         }
-        
-        const vendorId = req.user.id; 
+
+        const vendorId = req.user.id;
 
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
-        const baseFilter = { 
-            vendor: new mongoose.Types.ObjectId(vendorId) 
+        const baseFilter = {
+            vendor: new mongoose.Types.ObjectId(vendorId)
         };
 
         let finalFilter = { ...baseFilter };
@@ -85,7 +85,7 @@ export const getVendorLeads = async (req, res) => {
 
         if (search) {
             const searchRegex = new RegExp(search, 'i');
-            
+
             finalFilter.$or = [
                 { fullName: searchRegex },
                 { phoneNumber: searchRegex },
@@ -126,19 +126,19 @@ export const getVendorLeads = async (req, res) => {
 
     } catch (error) {
         console.error("Error fetching vendor leads:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: "Failed to fetch leads due to a server error." 
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch leads due to a server error."
         });
     }
 };
 
 export const updateLeadStatus = async (req, res) => {
     try {
-        if (req.user.role !== "vendor" || req.user.role !== "admin" || !req.user.id) {
-            return res.status(401).json({ 
-                success: false, 
-                message: "Authentication Required: You must be logged in as a vendor to update leads." 
+        if ((req.user.role !== "vendor" && req.user.role !== "admin") || !req.user.id) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication Required: You must be logged in as a vendor or admin to update leads."
             });
         }
 
@@ -172,26 +172,28 @@ export const updateLeadStatus = async (req, res) => {
 
         const objectIds = idsArray.map(id => new mongoose.Types.ObjectId(id));
 
-        const leadsCount = await Lead.countDocuments({
-            _id: { $in: objectIds },
-            vendor: new mongoose.Types.ObjectId(vendorId)
-        });
-
-        if (leadsCount !== idsArray.length) {
-            return res.status(403).json({
-                success: false,
-                message: "Access denied: Some leads do not belong to you or do not exist."
-            });
-        }
-
-        const updateResult = await Lead.updateMany(
-            {
+        // For vendors, verify ownership; admins can update any lead
+        if (req.user.role === "vendor") {
+            const leadsCount = await Lead.countDocuments({
                 _id: { $in: objectIds },
                 vendor: new mongoose.Types.ObjectId(vendorId)
-            },
-            {
-                $set: { status: status }
+            });
+
+            if (leadsCount !== idsArray.length) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied: Some leads do not belong to you or do not exist."
+                });
             }
+        }
+
+        const updateFilter = req.user.role === "vendor"
+            ? { _id: { $in: objectIds }, vendor: new mongoose.Types.ObjectId(vendorId) }
+            : { _id: { $in: objectIds } };
+
+        const updateResult = await Lead.updateMany(
+            updateFilter,
+            { $set: { status: status } }
         );
 
         const updatedLeads = await Lead.find({
@@ -199,7 +201,7 @@ export const updateLeadStatus = async (req, res) => {
         });
 
         const isBulk = idsArray.length > 1;
-        const message = isBulk 
+        const message = isBulk
             ? `Successfully updated ${updateResult.modifiedCount} lead(s) to status: ${status}`
             : `Lead status updated to: ${status}`;
 
@@ -222,9 +224,9 @@ export const updateLeadStatus = async (req, res) => {
             });
         }
 
-        res.status(500).json({ 
-            success: false, 
-            message: "Failed to update lead status due to a server error." 
+        res.status(500).json({
+            success: false,
+            message: "Failed to update lead status due to a server error."
         });
     }
 };
@@ -232,10 +234,10 @@ export const updateLeadStatus = async (req, res) => {
 
 export const deleteLead = async (req, res) => {
     try {
-        if (req.user.role !== "vendor" || req.user.role !== "admin" || !req.user.id) {
-            return res.status(401).json({ 
-                success: false, 
-                message: "Authentication Required: You must be logged in as a vendor to delete leads." 
+        if ((req.user.role !== "vendor" && req.user.role !== "admin") || !req.user.id) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication Required: You must be logged in as a vendor or admin to delete leads."
             });
         }
 
@@ -261,25 +263,29 @@ export const deleteLead = async (req, res) => {
 
         const objectIds = idsArray.map(id => new mongoose.Types.ObjectId(id));
 
-        const leadsCount = await Lead.countDocuments({
-            _id: { $in: objectIds },
-            vendor: new mongoose.Types.ObjectId(vendorId)
-        });
-
-        if (leadsCount !== idsArray.length) {
-            return res.status(403).json({
-                success: false,
-                message: "Access denied: Some leads do not belong to you or do not exist."
+        // For vendors, verify ownership; admins can delete any lead
+        if (req.user.role === "vendor") {
+            const leadsCount = await Lead.countDocuments({
+                _id: { $in: objectIds },
+                vendor: new mongoose.Types.ObjectId(vendorId)
             });
+
+            if (leadsCount !== idsArray.length) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Access denied: Some leads do not belong to you or do not exist."
+                });
+            }
         }
 
-        const deleteResult = await Lead.deleteMany({
-            _id: { $in: objectIds },
-            vendor: new mongoose.Types.ObjectId(vendorId)
-        });
+        const deleteFilter = req.user.role === "vendor"
+            ? { _id: { $in: objectIds }, vendor: new mongoose.Types.ObjectId(vendorId) }
+            : { _id: { $in: objectIds } };
+
+        const deleteResult = await Lead.deleteMany(deleteFilter);
 
         const isBulk = idsArray.length > 1;
-        const message = isBulk 
+        const message = isBulk
             ? `Successfully deleted ${deleteResult.deletedCount} lead(s)`
             : `Lead deleted successfully`;
 
@@ -301,9 +307,9 @@ export const deleteLead = async (req, res) => {
             });
         }
 
-        res.status(500).json({ 
-            success: false, 
-            message: "Failed to delete lead(s) due to a server error." 
+        res.status(500).json({
+            success: false,
+            message: "Failed to delete lead(s) due to a server error."
         });
     }
 };
@@ -372,9 +378,9 @@ export const getAllLeads = async (req, res) => {
 
     } catch (error) {
         console.error("Error fetching all leads:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: "Failed to fetch leads due to a server error." 
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch leads due to a server error."
         });
     }
 };
