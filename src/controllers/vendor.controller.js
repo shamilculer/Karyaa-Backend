@@ -259,7 +259,7 @@ export const loginVendor = async (req, res) => {
 
 
     // TODO: replace this with 
-    const isMatch = await bcrypt.compare(password, vendor.password);
+    const isMatch = bcrypt.compareSync(password, vendor.password);
     if (!isMatch) {
       return res
         .status(400)
@@ -843,6 +843,72 @@ export const updateVendor = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "System Error: Failed to update vendor profile.",
+    });
+  }
+};
+
+/**
+ * @desc Update vendor password
+ * @route PUT /api/v1/vendor/password
+ * @access Private (Vendor)
+ */
+export const updateVendorPassword = async (req, res) => {
+  const vendorId = req.user.id;
+  const { currentPassword, newPassword } = req.body;
+
+  try {
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Both current password and new password are required.",
+      });
+    }
+
+    // Validate new password strength
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 6 characters long.",
+      });
+    }
+
+    // Fetch vendor with password field
+    const vendor = await Vendor.findById(vendorId).select("+password");
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found.",
+      });
+    }
+
+    // Verify current password
+    const isMatch = bcrypt.compareSync(currentPassword, vendor.password);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect.",
+      });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update password
+    vendor.password = hashedPassword;
+    await vendor.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password updated successfully.",
+    });
+  } catch (error) {
+    console.error(`Password update failed for vendor ID ${vendorId}:`, error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating password.",
     });
   }
 };

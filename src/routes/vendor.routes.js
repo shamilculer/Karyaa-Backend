@@ -1,7 +1,7 @@
 import express from "express";
-import { 
-    registerVendor, 
-    loginVendor, 
+import {
+    registerVendor,
+    loginVendor,
     getSingleVendor,
     getVendorOptions,
     getVendorsForComparison,
@@ -10,6 +10,7 @@ import {
     getApprovedVendors,
     updateVendor,
     getVendorProfileForEdit,
+    updateVendorPassword,
 } from "../controllers/vendor.controller.js";
 import { verifyVendor } from "../middleware/verifyVendor.js"
 
@@ -25,11 +26,12 @@ router.post('/auth/login', loginVendor);
 // -------------------------------------------------------------------
 // --- COMPARE VENDOR ROUTES (Must be BEFORE dynamic /:identifier) ---
 // -------------------------------------------------------------------
-router.get('/options', getVendorOptions); 
+router.get('/options', getVendorOptions);
 router.get('/compare', getVendorsForComparison);
 
 
 router.get("/profile", verifyVendor, getVendorProfileForEdit)
+router.put("/password/update", verifyVendor, updateVendorPassword)
 router.put("/:vendorId", verifyVendor, updateVendor)
 
 // -------------------------------------------------------------------
