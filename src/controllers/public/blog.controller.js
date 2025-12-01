@@ -74,6 +74,36 @@ export const getBlogPost = async (req, res) => {
       });
     }
 
+    // Track unique view
+    try {
+      const ipAddress = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for']?.split(',')[0];
+      const userAgent = req.headers['user-agent'];
+
+      // Check if this IP has already viewed this blog in the last 24 hours
+      const { default: BlogView } = await import("../../models/BlogView.model.js");
+      const existingView = await BlogView.findOne({
+        blog: blog._id,
+        ipAddress: ipAddress,
+      });
+
+      // Only increment view count if this is a new unique view
+      if (!existingView) {
+        // Create new view record
+        await BlogView.create({
+          blog: blog._id,
+          ipAddress: ipAddress,
+          userAgent: userAgent,
+        });
+
+        // Increment blog view count
+        blog.views += 1;
+        await blog.save();
+      }
+    } catch (viewError) {
+      // Log error but don't fail the request
+      console.error("Error tracking blog view:", viewError);
+    }
+
     res.status(200).json({
       success: true,
       blog,

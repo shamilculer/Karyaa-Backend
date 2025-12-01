@@ -13,6 +13,34 @@ const bannerSchema = mongoose.Schema(
             type: String,
             required: [true, 'Banner image URL is required.'],
         },
+        mobileImageUrl: {
+            type: String, // Optional mobile version
+            default: null
+        },
+
+        // --- Page Title & Tagline ---
+        title: {
+            type: String,
+            trim: true,
+            maxlength: 100,
+            default: null
+        },
+        tagline: {
+            type: String,
+            trim: true,
+            maxlength: 200,
+            default: null
+        },
+
+        // --- Time-based Activation ---
+        activeFrom: {
+            type: Date,
+            default: null
+        },
+        activeUntil: {
+            type: Date,
+            default: null
+        },
 
         // --- Status and Placement ---
         status: {
@@ -21,7 +49,7 @@ const bannerSchema = mongoose.Schema(
             default: 'Active',
             required: true,
         },
-        
+
         // 💡 UPDATED: Placement is now an array of strings for multi-selection
         // No enum restriction - allows dynamic placement values (categories, subcategories, static pages)
         placement: {
@@ -52,9 +80,10 @@ const bannerSchema = mongoose.Schema(
 );
 
 bannerSchema.index({ status: 1, placement: 1 });
+bannerSchema.index({ activeFrom: 1, activeUntil: 1 }); // Index for time-based queries
 
 
-bannerSchema.pre('save', function(next) {
+bannerSchema.pre('save', function (next) {
     if (this.placement.length === 0) {
         return next(new Error('At least one placement location is required.'));
     }
@@ -70,6 +99,12 @@ bannerSchema.pre('save', function(next) {
         }
         this.vendor = undefined;
     }
+
+    // Validate date range
+    if (this.activeFrom && this.activeUntil && this.activeFrom > this.activeUntil) {
+        return next(new Error('Active From date must be before Active Until date.'));
+    }
+
     next();
 });
 

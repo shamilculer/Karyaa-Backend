@@ -135,8 +135,21 @@ export const adminUpdateReview = async (req, res) => {
             return res.status(404).json({ message: "Review not found" });
         }
 
-        if (status) review.status = status;
-        if (typeof flaggedForRemoval === 'boolean') review.flaggedForRemoval = flaggedForRemoval;
+        if (status) {
+            review.status = status;
+            // If admin approves a review, automatically unflag it
+            if (status === 'Approved') {
+                review.flaggedForRemoval = false;
+            }
+        }
+
+        if (typeof flaggedForRemoval === 'boolean') {
+            review.flaggedForRemoval = flaggedForRemoval;
+            // If admin dismisses a flag (sets to false), automatically approve the review
+            if (flaggedForRemoval === false) {
+                review.status = 'Approved';
+            }
+        }
 
         await review.save();
 

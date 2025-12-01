@@ -22,56 +22,65 @@ const sendError = (res, error, status = 500) => {
  */
 export const createBanner = async (req, res) => {
     try {
-      const {
-        name,
-        imageUrl,
-        placement,
-        isVendorSpecific,
-        vendor,
-        customUrl,
-        status
-      } = req.body;
-  
-      if (!name || !imageUrl || !placement || placement.length === 0) {
-        return sendError(res, { message: "Name, image, placement required." }, 400);
-      }
-  
-      if (isVendorSpecific) {
-        if (!vendor) {
-          return sendError(res, { message: "Vendor required." }, 400);
+        const {
+            name,
+            imageUrl,
+            placement,
+            isVendorSpecific,
+            vendor,
+            customUrl,
+            status,
+            // New fields
+            title,
+            tagline,
+            mobileImageUrl,
+            activeFrom,
+            activeUntil
+        } = req.body;
+
+        if (!name || !imageUrl || !placement || placement.length === 0) {
+            return sendError(res, { message: "Name, image, placement required." }, 400);
         }
-        if (!mongoose.Types.ObjectId.isValid(vendor)) {
-          return sendError(res, { message: "Invalid Vendor ID." }, 400);
+
+        if (isVendorSpecific) {
+            if (!vendor) {
+                return sendError(res, { message: "Vendor required." }, 400);
+            }
+            if (!mongoose.Types.ObjectId.isValid(vendor)) {
+                return sendError(res, { message: "Invalid Vendor ID." }, 400);
+            }
+            const existing = await Vendor.findById(vendor);
+            if (!existing) {
+                return sendError(res, { message: "Vendor not found." }, 404);
+            }
+        } else {
+            if (!customUrl) {
+                return sendError(res, { message: "Custom URL required." }, 400);
+            }
         }
-        const existing = await Vendor.findById(vendor);
-        if (!existing) {
-          return sendError(res, { message: "Vendor not found." }, 404);
-        }
-      } else {
-        if (!customUrl) {
-          return sendError(res, { message: "Custom URL required." }, 400);
-        }
-      }
-  
-      const banner = new AdBanner({
-        name,
-        imageUrl,
-        placement,
-        isVendorSpecific,
-        vendor: isVendorSpecific ? vendor : null,
-        customUrl: !isVendorSpecific ? customUrl : null,
-        status: status || "Active"
-      });
-  
-      const saved = await banner.save();
-      sendSuccess(res, saved, "Ad Banner created!", 201);
-  
+
+        const banner = new AdBanner({
+            name,
+            imageUrl,
+            placement,
+            isVendorSpecific,
+            vendor: isVendorSpecific ? vendor : null,
+            customUrl: !isVendorSpecific ? customUrl : null,
+            status: status || "Active",
+            title,
+            tagline,
+            mobileImageUrl,
+            activeFrom,
+            activeUntil
+        });
+
+        const saved = await banner.save();
+        sendSuccess(res, saved, "Ad Banner created!", 201);
+
     } catch (error) {
-      sendError(res, error, 400);
+        sendError(res, error, 400);
     }
-  };
-  
-  
+};
 
 // ---------------------------------------------------------------------------------
 

@@ -7,6 +7,9 @@ import {
   getVendorStatusDistribution,
   getLeadMetrics,
   getEngagementMetrics,
+  getTopPerformingVendors,
+  getVendorStatusSummary,
+  getReviewStats,
 } from "../../../controllers/admin/analytics/platformAnalytics.controller.js";
 import { verifyAdmin } from "../../../middleware/verifyAdmin.js";
 
@@ -36,4 +39,14 @@ router.get("/lead-metrics", getLeadMetrics);
 // Engagement metrics
 router.get("/engagement", getEngagementMetrics);
 
+// Top performing vendors
+router.get("/top-vendors", getTopPerformingVendors);
+
+// Vendor status summary
+router.get("/vendor-summary", getVendorStatusSummary);
+
+// Review statistics
+router.get("/review-stats", getReviewStats);
+
 export default router;
+

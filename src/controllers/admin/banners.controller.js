@@ -3,10 +3,17 @@ import AdBanner from "../../models/AdBanner.model.js";
 export const getActiveBanners = async (req, res) => {
     try {
         const { placement } = req.query;
+        const now = new Date();
 
         // Build query
-        const query = { status: 'Active' };
-        
+        const query = {
+            status: 'Active',
+            $and: [
+                { $or: [{ activeFrom: { $exists: false } }, { activeFrom: null }, { activeFrom: { $lte: now } }] },
+                { $or: [{ activeUntil: { $exists: false } }, { activeUntil: null }, { activeUntil: { $gte: now } }] }
+            ]
+        };
+
         // Filter by placement if provided
         if (placement && placement !== 'all') {
             query.placement = { $in: [placement] };

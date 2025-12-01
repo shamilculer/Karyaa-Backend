@@ -14,42 +14,113 @@ export const adminGetAllLeads = async (req, res) => {
 
         const { search, status, vendorId } = req.query;
 
-        let query = {};
+        let matchStage = {};
 
+        if (status && status !== 'All') {
+            matchStage.status = status;
+        }
+
+        if (vendorId) {
+            matchStage.vendor = new mongoose.Types.ObjectId(vendorId);
+        }
+
+        // Use aggregation pipeline to enable searching by vendor business name
+        let pipeline = [];
+
+        // First, lookup vendor data
+        pipeline.push({
+            $lookup: {
+                from: 'vendors',
+                localField: 'vendor',
+                foreignField: '_id',
+                as: 'vendorData'
+            }
+        });
+
+        // Unwind vendor data (convert array to object)
+        pipeline.push({
+            $unwind: {
+                path: '$vendorData',
+                preserveNullAndEmptyArrays: true
+            }
+        });
+
+        // Apply search filter if provided
         if (search) {
             const searchRegex = new RegExp(search, 'i');
-            query.$or = [
+            matchStage.$or = [
                 { fullName: searchRegex },
                 { phoneNumber: searchRegex },
                 { email: searchRegex },
                 { message: searchRegex },
                 { referenceId: searchRegex },
+                { 'vendorData.businessName': searchRegex }
             ];
         }
 
-        if (status && status !== 'All') {
-            query.status = status;
-        }
+        // Apply match stage
+        pipeline.push({ $match: matchStage });
 
-        if (vendorId) {
-            query.vendor = new mongoose.Types.ObjectId(vendorId);
-        }
+        // Add facet for pagination and total count
+        pipeline.push({
+            $facet: {
+                metadata: [{ $count: 'total' }],
+                data: [
+                    { $sort: { createdAt: -1 } },
+                    { $skip: skip },
+                    { $limit: limit },
+                    // Lookup user data
+                    {
+                        $lookup: {
+                            from: 'users',
+                            localField: 'user',
+                            foreignField: '_id',
+                            as: 'userData'
+                        }
+                    },
+                    {
+                        $unwind: {
+                            path: '$userData',
+                            preserveNullAndEmptyArrays: true
+                        }
+                    },
+                    // Project final shape
+                    {
+                        $project: {
+                            fullName: 1,
+                            phoneNumber: 1,
+                            email: 1,
+                            message: 1,
+                            eventType: 1,
+                            eventDate: 1,
+                            location: 1,
+                            status: 1,
+                            referenceId: 1,
+                            createdAt: 1,
+                            updatedAt: 1,
+                            vendor: {
+                                _id: '$vendorData._id',
+                                businessName: '$vendorData.businessName',
+                                email: '$vendorData.email',
+                                phoneNumber: '$vendorData.phoneNumber',
+                                ownerName: '$vendorData.ownerName'
+                            },
+                            user: {
+                                _id: '$userData._id',
+                                username: '$userData.username',
+                                email: '$userData.email',
+                                mobileNumber: '$userData.mobileNumber'
+                            }
+                        }
+                    }
+                ]
+            }
+        });
 
-        const leads = await Lead.find(query)
-            .populate({
-                path: "vendor",
-                select: "businessName email phoneNumber ownerName",
-            })
-            .populate({
-                path: "user",
-                select: "username email mobileNumber",
-            })
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .exec();
+        const result = await Lead.aggregate(pipeline);
 
-        const totalLeads = await Lead.countDocuments(query);
+        const leads = result[0]?.data || [];
+        const totalLeads = result[0]?.metadata[0]?.total || 0;
 
         res.status(200).json({
             success: true,
@@ -65,9 +136,9 @@ export const adminGetAllLeads = async (req, res) => {
 
     } catch (error) {
         console.error("Error fetching all leads:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: "Failed to fetch leads due to a server error." 
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch leads due to a server error."
         });
     }
 };
@@ -133,7 +204,7 @@ export const adminUpdateLeadStatus = async (req, res) => {
         });
 
         const isBulk = idsArray.length > 1;
-        const message = isBulk 
+        const message = isBulk
             ? `Successfully updated ${updateResult.modifiedCount} lead(s) to status: ${status}`
             : `Lead status updated to: ${status}`;
 
@@ -156,9 +227,9 @@ export const adminUpdateLeadStatus = async (req, res) => {
             });
         }
 
-        res.status(500).json({ 
-            success: false, 
-            message: "Failed to update lead status due to a server error." 
+        res.status(500).json({
+            success: false,
+            message: "Failed to update lead status due to a server error."
         });
     }
 };
@@ -207,7 +278,7 @@ export const adminDeleteLead = async (req, res) => {
         });
 
         const isBulk = idsArray.length > 1;
-        const message = isBulk 
+        const message = isBulk
             ? `Successfully deleted ${deleteResult.deletedCount} lead(s)`
             : `Lead deleted successfully`;
 
@@ -229,9 +300,9 @@ export const adminDeleteLead = async (req, res) => {
             });
         }
 
-        res.status(500).json({ 
-            success: false, 
-            message: "Failed to delete lead(s) due to a server error." 
+        res.status(500).json({
+            success: false,
+            message: "Failed to delete lead(s) due to a server error."
         });
     }
 };
