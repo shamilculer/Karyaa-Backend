@@ -18,20 +18,19 @@ export const getDashboardOverview = async (req, res) => {
       activeAds,
       totalInquiries,
     ] = await Promise.all([
-      // Total active vendors (approved with active subscriptions)
+      // Total active vendors (all approved vendors)
       Vendor.countDocuments({
         vendorStatus: "approved",
-        subscriptionEndDate: { $gte: now },
       }),
-      
+
       // Total registered users
       User.countDocuments(),
-      
+
       // Active ads (banners with Active status)
       AdBanner.countDocuments({
         status: "Active",
       }),
-      
+
       // Total inquiries/leads generated
       Lead.countDocuments(),
     ]);
@@ -79,7 +78,7 @@ export const getActionItemsList = async (req, res) => {
           .lean(),
         Vendor.countDocuments({ vendorStatus: "pending" })
       ]),
-      
+
       // Flagged reviews - get both list and count
       Promise.all([
         Review.find({
@@ -93,14 +92,14 @@ export const getActionItemsList = async (req, res) => {
           .lean(),
         Review.countDocuments({ flaggedForRemoval: true })
       ]),
-      
+
       // Subscriptions expiring in next 30 days - get both list and count
       Promise.all([
         Vendor.find({
           vendorStatus: "approved",
-          subscriptionEndDate: { 
-            $gte: now, 
-            $lte: thirtyDaysFromNow 
+          subscriptionEndDate: {
+            $gte: now,
+            $lte: thirtyDaysFromNow
           },
         })
           .select("referenceId businessName businessLogo email phoneNumber subscriptionEndDate address.city address.state address.country")
@@ -109,13 +108,13 @@ export const getActionItemsList = async (req, res) => {
           .lean(),
         Vendor.countDocuments({
           vendorStatus: "approved",
-          subscriptionEndDate: { 
-            $gte: now, 
-            $lte: thirtyDaysFromNow 
+          subscriptionEndDate: {
+            $gte: now,
+            $lte: thirtyDaysFromNow
           },
         })
       ]),
-      
+
       // Open support tickets - get both list and count
       Promise.all([
         Ticket.find({
@@ -129,7 +128,7 @@ export const getActionItemsList = async (req, res) => {
           status: { $in: ["open", "in-progress"] },
         })
       ]),
-      
+
       // Pending referrals - get both list and count
       Promise.all([
         Referral.find({

@@ -69,6 +69,7 @@ const adminSchema = new mongoose.Schema(
       categoryManagement: { type: Boolean, default: false },
       vendorManagement: { type: Boolean, default: false },
       reviewManagement: { type: Boolean, default: false },
+      leadsManagement: { type: Boolean, default: false },
       analyticsInsights: { type: Boolean, default: false },
       supportTickets: { type: Boolean, default: false },
       adManagement: { type: Boolean, default: false },

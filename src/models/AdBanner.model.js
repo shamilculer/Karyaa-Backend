@@ -31,11 +31,15 @@ const bannerSchema = mongoose.Schema(
             maxlength: 200,
             default: null
         },
+        showOverlay: {
+            type: Boolean,
+            default: true
+        },
 
-        // --- Time-based Activation ---
+        // --- Schedule ---
         activeFrom: {
             type: Date,
-            default: null
+            default: Date.now
         },
         activeUntil: {
             type: Date,
@@ -58,6 +62,7 @@ const bannerSchema = mongoose.Schema(
             default: ['Homepage Carousel'],
         },
 
+        // --- Target Configuration ---
         isVendorSpecific: {
             type: Boolean,
             default: true,
