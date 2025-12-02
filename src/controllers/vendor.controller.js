@@ -181,7 +181,96 @@ export const registerVendor = async (req, res) => {
       twitterLink,
     });
 
+    // --- VALIDATE FILES EXIST BEFORE REGISTRATION ---
+    // Check if all uploaded files still exist in S3 (in case they expired)
+    const { checkS3ObjectExists, getKeyFromUrl } = await import("../utils/s3.js");
+    const fileFieldsToCheck = [
+      { field: 'businessLogo', value: businessLogo },
+      { field: 'tradeLicenseCopy', value: tradeLicenseCopy },
+      { field: 'emiratesIdCopy', value: emiratesIdCopy },
+      { field: 'businessLicenseCopy', value: businessLicenseCopy },
+      { field: 'passportOrIdCopy', value: passportOrIdCopy },
+      { field: 'ownerProfileImage', value: ownerProfileImage }
+    ];
+
+    for (const { field, value } of fileFieldsToCheck) {
+      // Extract URL from object if needed (handles both string URLs and {url, uploadedAt} objects)
+      const url = typeof value === 'string' ? value : value?.url;
+
+      if (url && url.includes('temp_vendors/')) {
+        const key = getKeyFromUrl(url);
+        if (key) {
+          const exists = await checkS3ObjectExists(key);
+          if (!exists) {
+            return res.status(400).json({
+              success: false,
+              error: `Your uploaded file for "${field}" has expired or no longer exists. Please re-upload your documents and try again.`
+            });
+          }
+        }
+      }
+    }
+
     await newVendor.save();
+
+    // --- MOVE FILES TO PERMANENT FOLDER ---
+    // Now that we have the slug, we can move files from temp_vendors/ to vendors/{slug}/
+    try {
+      const { moveS3Object, getKeyFromUrl } = await import("../utils/s3.js");
+      const fileFields = [
+        'businessLogo',
+        'tradeLicenseCopy',
+        'personalEmiratesIdNumber', // Wait, this is a number, not a file? Check schema.
+        'emiratesIdCopy',
+        'businessLicenseCopy',
+        'passportOrIdCopy'
+      ];
+
+      // Note: personalEmiratesIdNumber is a string (number), not a file. 
+      // tradeLicenseNumber is also a string.
+      // The file fields are: businessLogo, tradeLicenseCopy, emiratesIdCopy, businessLicenseCopy, passportOrIdCopy.
+      // Also ownerProfileImage if it was uploaded (but schema says it's generated if missing).
+
+      const actualFileFields = [
+        'businessLogo',
+        'tradeLicenseCopy',
+        'emiratesIdCopy',
+        'businessLicenseCopy',
+        'passportOrIdCopy',
+        'ownerProfileImage'
+      ];
+
+      let hasUpdates = false;
+
+      for (const field of actualFileFields) {
+        const url = newVendor[field];
+        if (url && typeof url === 'string' && url.includes('temp_vendors/')) {
+          const oldKey = getKeyFromUrl(url);
+          if (oldKey) {
+            const fileName = oldKey.split('/').pop();
+            const newKey = `vendors/${newVendor.slug}/${fileName}`;
+
+            try {
+              const newUrl = await moveS3Object(oldKey, newKey);
+              newVendor[field] = newUrl;
+              hasUpdates = true;
+            } catch (moveError) {
+              console.error(`Failed to move file for field ${field}:`, moveError);
+              // Continue even if one fails, or maybe flag it? 
+              // For now, we log it. The file remains in temp.
+            }
+          }
+        }
+      }
+
+      if (hasUpdates) {
+        await newVendor.save();
+      }
+
+    } catch (err) {
+      console.error("Error moving files to permanent storage:", err);
+      // We don't fail the request if moving fails, but we should probably alert admin or log it.
+    }
 
     res.status(201).json({
       success: true,
@@ -194,6 +283,7 @@ export const registerVendor = async (req, res) => {
         email: newVendor.email,
         vendorStatus: newVendor.vendorStatus,
         isInternational: newVendor.isInternational,
+        slug: newVendor.slug, // Return slug too
       },
     });
   } catch (error) {

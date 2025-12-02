@@ -26,7 +26,7 @@ export const getAllVendors = async (req, res) => {
     if (vendorStatus) matchQuery.vendorStatus = vendorStatus;
     if (city) matchQuery["address.city"] = city;
     if (isInternational !== "") matchQuery.isInternational = isInternational === "true";
-    
+
     // Filter by expiry status
     if (expiryStatus) {
       const now = new Date();
@@ -54,7 +54,7 @@ export const getAllVendors = async (req, res) => {
 
       const vendors = await Vendor.find(matchQuery)
         .select(
-          "businessName businessLogo ownerName ownerProfileImage email phoneNumber address.city address.country isInternational averageRating vendorStatus selectedBundle subscriptionStartDate subscriptionEndDate mainCategory createdAt"
+          "referenceId businessName businessLogo ownerName ownerProfileImage email phoneNumber address.city address.country isInternational averageRating vendorStatus selectedBundle subscriptionStartDate subscriptionEndDate mainCategory createdAt"
         )
         .populate("selectedBundle", "name price")
         .populate("mainCategory", "name")
@@ -67,6 +67,7 @@ export const getAllVendors = async (req, res) => {
       // Format response
       const formattedVendors = vendors.map((vendor) => ({
         _id: vendor._id,
+        referenceId: vendor.referenceId,
         businessName: vendor.businessName,
         businessLogo: vendor.businessLogo,
         ownerName: vendor.ownerName,
@@ -139,6 +140,7 @@ export const getAllVendors = async (req, res) => {
       {
         $match: {
           $or: [
+            { referenceId: searchRegex },
             { businessName: searchRegex },
             { ownerName: searchRegex },
             { email: searchRegex },
@@ -166,7 +168,7 @@ export const getAllVendors = async (req, res) => {
 
       // Sort
       {
-        $sort: expiryStatus 
+        $sort: expiryStatus
           ? { subscriptionEndDate: 1 } // Ascending order when filtering by expiry
           : { [sortBy]: sortOrder === "asc" ? 1 : -1 }
       },
@@ -188,6 +190,7 @@ export const getAllVendors = async (req, res) => {
     // Format response
     const formattedVendors = vendors.map((vendor) => ({
       _id: vendor._id,
+      referenceId: vendor.referenceId,
       businessName: vendor.businessName,
       businessLogo: vendor.businessLogo,
       ownerName: vendor.ownerName,
@@ -244,7 +247,7 @@ export const getVendorById = async (req, res) => {
 
     // Get all features (bundle + custom)
     const allFeatures = await vendor.getAllFeatures();
-    
+
     // Get total subscription duration
     const subscriptionDuration = await vendor.getTotalSubscriptionDuration();
 
@@ -332,7 +335,7 @@ export const updateVendorStatus = async (req, res) => {
 
       // Calculate end date based on custom duration or bundle duration
       const duration = await currentVendor.getTotalSubscriptionDuration();
-      
+
       if (duration) {
         const endDate = calculateSubscriptionEndDate(
           startDate,
@@ -425,21 +428,21 @@ export const updateVendorDuration = async (req, res) => {
     // Recalculate subscription end date if vendor is approved
     if (vendor.vendorStatus === "approved" && vendor.subscriptionStartDate) {
       const duration = await vendor.getTotalSubscriptionDuration();
-      
+
       if (duration) {
         const endDate = calculateSubscriptionEndDate(
           vendor.subscriptionStartDate,
           duration.base,
           duration.bonus
         );
-        
+
         // Update end date without triggering validation
         await Vendor.findByIdAndUpdate(
           id,
           { subscriptionEndDate: endDate },
           { new: false, runValidators: false }
         );
-        
+
         // Update the vendor object for response
         vendor.subscriptionEndDate = endDate;
       }
@@ -496,7 +499,7 @@ export const updateVendorFeatures = async (req, res) => {
       data: {
         ...vendor.toObject(),
         allFeatures,
-        },
+      },
       message: "Custom features updated successfully",
     });
   } catch (error) {
@@ -510,8 +513,8 @@ export const toggleRecommended = async (req, res) => {
     const { id } = req.params;
 
     const vendor = await Vendor.findById(id).populate("selectedBundle")
-    .populate("mainCategory")
-    .populate("subCategories");
+      .populate("mainCategory")
+      .populate("subCategories");
 
 
     if (!vendor) {
@@ -527,9 +530,8 @@ export const toggleRecommended = async (req, res) => {
     res.status(200).json({
       success: true,
       data: vendor,
-      message: `Vendor ${
-        vendor.isRecommended ? "added to" : "removed from"
-      } recommended list`,
+      message: `Vendor ${vendor.isRecommended ? "added to" : "removed from"
+        } recommended list`,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -552,7 +554,7 @@ export const updateVendorDocuments = async (req, res) => {
 
     // Find the vendor first
     const vendor = await Vendor.findById(id);
-    
+
     if (!vendor) {
       return res.status(404).json({
         success: false,
@@ -562,7 +564,7 @@ export const updateVendorDocuments = async (req, res) => {
 
     // Build update object
     const updateFields = {};
-    
+
     // Handle UAE vendor documents and numbers
     if (!vendor.isInternational) {
       // UAE document files
@@ -575,7 +577,7 @@ export const updateVendorDocuments = async (req, res) => {
         }
         updateFields.tradeLicenseCopy = tradeLicenseCopy;
       }
-      
+
       if (emiratesIdCopy !== undefined) {
         if (emiratesIdCopy === "") {
           return res.status(400).json({
@@ -614,7 +616,7 @@ export const updateVendorDocuments = async (req, res) => {
           message: "International documents cannot be updated for UAE vendors",
         });
       }
-    } 
+    }
     // Handle International vendor documents
     else {
       // International document files
@@ -627,7 +629,7 @@ export const updateVendorDocuments = async (req, res) => {
         }
         updateFields.businessLicenseCopy = businessLicenseCopy;
       }
-      
+
       if (passportOrIdCopy !== undefined) {
         if (passportOrIdCopy === "") {
           return res.status(400).json({
@@ -639,8 +641,8 @@ export const updateVendorDocuments = async (req, res) => {
       }
 
       // Reject UAE fields if provided
-      if (tradeLicenseCopy !== undefined || emiratesIdCopy !== undefined || 
-          tradeLicenseNumber !== undefined || personalEmiratesIdNumber !== undefined) {
+      if (tradeLicenseCopy !== undefined || emiratesIdCopy !== undefined ||
+        tradeLicenseNumber !== undefined || personalEmiratesIdNumber !== undefined) {
         return res.status(400).json({
           success: false,
           message: "UAE documents cannot be updated for international vendors",
@@ -656,12 +658,34 @@ export const updateVendorDocuments = async (req, res) => {
       });
     }
 
+    // --- DELETE OLD FILES FROM S3 ---
+    try {
+      const existingVendor = await Vendor.findById(id);
+      if (existingVendor) {
+        const { deleteS3Object, getKeyFromUrl } = await import("../../utils/s3.js");
+
+        for (const [field, newUrl] of Object.entries(updateFields)) {
+          const oldUrl = existingVendor[field];
+          // If there was an old URL and it's different from the new one (and not empty/null)
+          if (oldUrl && oldUrl !== newUrl) {
+            const key = getKeyFromUrl(oldUrl);
+            if (key) {
+              await deleteS3Object(key);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error deleting old files from S3:", err);
+      // Continue with update even if deletion fails
+    }
+
     // Update the vendor
     const updatedVendor = await Vendor.findByIdAndUpdate(
       id,
       updateFields,
-      { 
-        new: true, 
+      {
+        new: true,
         runValidators: true,
         select: "businessName email isInternational tradeLicenseNumber personalEmiratesIdNumber tradeLicenseCopy emiratesIdCopy businessLicenseCopy passportOrIdCopy"
       }
@@ -696,7 +720,7 @@ export const updateVendorDocuments = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating vendor documents:", error);
-    
+
     // Handle duplicate key error for trade license number
     if (error.code === 11000) {
       return res.status(400).json({
@@ -783,13 +807,13 @@ export const updateVendorBundle = async (req, res) => {
     if (subscriptionEndDate) {
       updateFields.subscriptionEndDate = new Date(subscriptionEndDate);
     } else {
-        // Calculate end date based on new bundle duration
-        const endDate = calculateSubscriptionEndDate(
-            startDate,
-            bundle.duration,
-            bundle.bonusPeriod
-        );
-        updateFields.subscriptionEndDate = endDate;
+      // Calculate end date based on new bundle duration
+      const endDate = calculateSubscriptionEndDate(
+        startDate,
+        bundle.duration,
+        bundle.bonusPeriod
+      );
+      updateFields.subscriptionEndDate = endDate;
     }
 
     const vendor = await Vendor.findByIdAndUpdate(id, updateFields, {
@@ -842,8 +866,9 @@ export const getVendorGallery = async (req, res) => {
 export const deleteVendorGalleryItem = async (req, res) => {
   try {
     const { id, itemId } = req.params;
-    
-    const item = await GalleryItem.findOneAndDelete({ _id: itemId, vendor: id });
+
+    // Find the item first to get the URL
+    const item = await GalleryItem.findOne({ _id: itemId, vendor: id });
 
     if (!item) {
       return res.status(404).json({
@@ -851,6 +876,22 @@ export const deleteVendorGalleryItem = async (req, res) => {
         message: "Gallery item not found",
       });
     }
+
+    // Delete from S3
+    if (item.url) {
+      try {
+        const { deleteS3Object, getKeyFromUrl } = await import("../../utils/s3.js");
+        const key = getKeyFromUrl(item.url);
+        if (key) {
+          await deleteS3Object(key);
+        }
+      } catch (s3Error) {
+        console.error("Error deleting file from S3:", s3Error);
+        // Continue with DB deletion even if S3 fails
+      }
+    }
+
+    await GalleryItem.deleteOne({ _id: itemId });
 
     res.status(200).json({
       success: true,
@@ -887,6 +928,19 @@ export const deleteVendorPackage = async (req, res) => {
         success: false,
         message: "Package not found",
       });
+    }
+
+    // Delete cover image from S3
+    if (pkg.coverImage) {
+      try {
+        const { deleteS3Object, getKeyFromUrl } = await import("../../utils/s3.js");
+        const key = getKeyFromUrl(pkg.coverImage);
+        if (key) {
+          await deleteS3Object(key);
+        }
+      } catch (s3Error) {
+        console.error("Error deleting package cover image from S3:", s3Error);
+      }
     }
 
     res.status(200).json({
@@ -1103,6 +1157,19 @@ export const updateVendorPackage = async (req, res) => {
       }
     }
 
+    // Delete old cover image from S3 if it's being updated
+    if (coverImage && existingPackage.coverImage && coverImage !== existingPackage.coverImage) {
+      try {
+        const { deleteS3Object, getKeyFromUrl } = await import("../../utils/s3.js");
+        const key = getKeyFromUrl(existingPackage.coverImage);
+        if (key) {
+          await deleteS3Object(key);
+        }
+      } catch (s3Error) {
+        console.error("Error deleting old package cover image from S3:", s3Error);
+      }
+    }
+
     // Build update object
     const updateFields = {};
     if (coverImage !== undefined) updateFields.coverImage = coverImage;
@@ -1217,6 +1284,28 @@ export const deleteVendorGalleryItems = async (req, res) => {
       });
     }
 
+    // Find items to get URLs
+    const itemsToDelete = await GalleryItem.find({
+      _id: { $in: itemIds },
+      vendor: id,
+    });
+
+    // Delete from S3
+    const { deleteS3Object, getKeyFromUrl } = await import("../../utils/s3.js");
+
+    for (const item of itemsToDelete) {
+      if (item.url) {
+        try {
+          const key = getKeyFromUrl(item.url);
+          if (key) {
+            await deleteS3Object(key);
+          }
+        } catch (s3Error) {
+          console.error(`Error deleting file from S3 for item ${item._id}:`, s3Error);
+        }
+      }
+    }
+
     // Delete gallery items that belong to this vendor
     const result = await GalleryItem.deleteMany({
       _id: { $in: itemIds },
@@ -1239,176 +1328,190 @@ export const deleteVendorGalleryItems = async (req, res) => {
 
 // Add admin comment
 export const addAdminComment = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { message } = req.body;
+  try {
+    const { id } = req.params;
+    const { message } = req.body;
 
-        if (!message || !message.trim()) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Comment message is required" 
-            });
-        }
-
-        const vendor = await Vendor.findById(id);
-        if (!vendor) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Vendor not found" 
-            });
-        }
-
-        vendor.adminComments.push({
-            message: message.trim(),
-            createdAt: new Date()
-        });
-
-        await vendor.save();
-
-        res.status(200).json({
-            success: true,
-            message: "Comment added successfully",
-            data: vendor.adminComments
-        });
-    } catch (error) {
-        console.error("Error adding admin comment:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: error.message 
-        });
+    if (!message || !message.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Comment message is required"
+      });
     }
+
+    const vendor = await Vendor.findById(id);
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found"
+      });
+    }
+
+    vendor.adminComments.push({
+      message: message.trim(),
+      createdAt: new Date()
+    });
+
+    await vendor.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Comment added successfully",
+      data: vendor.adminComments
+    });
+  } catch (error) {
+    console.error("Error adding admin comment:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
 };
 
 // Delete admin comment
 export const deleteAdminComment = async (req, res) => {
-    try {
-        const { id, commentId } = req.params;
+  try {
+    const { id, commentId } = req.params;
 
-        const vendor = await Vendor.findById(id);
-        if (!vendor) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Vendor not found" 
-            });
-        }
-
-        const commentIndex = vendor.adminComments.findIndex(
-            comment => comment._id.toString() === commentId
-        );
-
-        if (commentIndex === -1) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Comment not found" 
-            });
-        }
-
-        vendor.adminComments.splice(commentIndex, 1);
-        await vendor.save();
-
-        res.status(200).json({
-            success: true,
-            message: "Comment deleted successfully",
-            data: vendor.adminComments
-        });
-    } catch (error) {
-        console.error("Error deleting admin comment:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: error.message 
-        });
+    const vendor = await Vendor.findById(id);
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found"
+      });
     }
+
+    const commentIndex = vendor.adminComments.findIndex(
+      comment => comment._id.toString() === commentId
+    );
+
+    if (commentIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "Comment not found"
+      });
+    }
+
+    vendor.adminComments.splice(commentIndex, 1);
+    await vendor.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Comment deleted successfully",
+      data: vendor.adminComments
+    });
+  } catch (error) {
+    console.error("Error deleting admin comment:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
 };
 
 // ==================== ADDITIONAL DOCUMENTS ====================
 
 // Add additional document
 export const addAdditionalDocument = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { documentName, documentUrl } = req.body;
+  try {
+    const { id } = req.params;
+    const { documentName, documentUrl } = req.body;
 
-        if (!documentName || !documentName.trim()) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Document name is required" 
-            });
-        }
-
-        if (!documentUrl || !documentUrl.trim()) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Document URL is required" 
-            });
-        }
-
-        const vendor = await Vendor.findById(id);
-        if (!vendor) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Vendor not found" 
-            });
-        }
-
-        vendor.additionalDocuments.push({
-            documentName: documentName.trim(),
-            documentUrl: documentUrl.trim(),
-            uploadedAt: new Date()
-        });
-
-        await vendor.save();
-
-        res.status(200).json({
-            success: true,
-            message: "Document added successfully",
-            data: vendor.additionalDocuments
-        });
-    } catch (error) {
-        console.error("Error adding additional document:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: error.message 
-        });
+    if (!documentName || !documentName.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Document name is required"
+      });
     }
+
+    if (!documentUrl || !documentUrl.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Document URL is required"
+      });
+    }
+
+    const vendor = await Vendor.findById(id);
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found"
+      });
+    }
+
+    vendor.additionalDocuments.push({
+      documentName: documentName.trim(),
+      documentUrl: documentUrl.trim(),
+      uploadedAt: new Date()
+    });
+
+    await vendor.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Document added successfully",
+      data: vendor.additionalDocuments
+    });
+  } catch (error) {
+    console.error("Error adding additional document:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
 };
 
 // Delete additional document
 export const deleteAdditionalDocument = async (req, res) => {
-    try {
-        const { id, documentId } = req.params;
+  try {
+    const { id, documentId } = req.params;
 
-        const vendor = await Vendor.findById(id);
-        if (!vendor) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Vendor not found" 
-            });
-        }
-
-        const documentIndex = vendor.additionalDocuments.findIndex(
-            doc => doc._id.toString() === documentId
-        );
-
-        if (documentIndex === -1) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Document not found" 
-            });
-        }
-
-        vendor.additionalDocuments.splice(documentIndex, 1);
-        await vendor.save();
-
-        res.status(200).json({
-            success: true,
-            message: "Document deleted successfully",
-            data: vendor.additionalDocuments
-        });
-    } catch (error) {
-        console.error("Error deleting additional document:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: error.message 
-        });
+    const vendor = await Vendor.findById(id);
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found"
+      });
     }
+
+    const documentIndex = vendor.additionalDocuments.findIndex(
+      doc => doc._id.toString() === documentId
+    );
+
+    if (documentIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "Document not found"
+      });
+    }
+
+    // Delete document from S3
+    const document = vendor.additionalDocuments[documentIndex];
+    if (document.documentUrl) {
+      try {
+        const { deleteS3Object, getKeyFromUrl } = await import("../../utils/s3.js");
+        const key = getKeyFromUrl(document.documentUrl);
+        if (key) {
+          await deleteS3Object(key);
+        }
+      } catch (s3Error) {
+        console.error("Error deleting additional document from S3:", s3Error);
+      }
+    }
+
+    vendor.additionalDocuments.splice(documentIndex, 1);
+    await vendor.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Document deleted successfully",
+      data: vendor.additionalDocuments
+    });
+  } catch (error) {
+    console.error("Error deleting additional document:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
 };
