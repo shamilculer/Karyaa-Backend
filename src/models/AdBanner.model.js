@@ -35,6 +35,11 @@ const bannerSchema = mongoose.Schema(
             type: Boolean,
             default: true
         },
+        displayMode: {
+            type: String,
+            enum: ['standard', 'auto'],
+            default: 'standard'
+        },
 
         // --- Schedule ---
         activeFrom: {
