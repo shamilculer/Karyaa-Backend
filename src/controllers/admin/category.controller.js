@@ -49,7 +49,7 @@ export const getCategories = async (req, res) => {
 
 export const addCategory = async (req, res) => {
   try {
-    const { name, coverImage } = req.body;
+    const { name, coverImage, metaTitle, metaDescription, metaKeywords } = req.body;
 
     if (!name) {
       return res.status(400).json({ success: false, message: "Category name is required" });
@@ -64,7 +64,13 @@ export const addCategory = async (req, res) => {
       });
     }
 
-    const newCategory = new Category({ name, coverImage });
+    const newCategory = new Category({
+      name,
+      coverImage,
+      metaTitle,
+      metaDescription,
+      metaKeywords
+    });
     await newCategory.save();
 
     res.status(201).json({
@@ -246,7 +252,7 @@ export const deleteCategory = async (req, res) => {
 
 export const addSubCategory = async (req, res) => {
   try {
-    const { name, mainCategory, coverImage } = req.body;
+    const { name, mainCategory, coverImage, metaTitle, metaDescription, metaKeywords } = req.body;
 
     if (!name || !mainCategory || !coverImage) {
       return res.status(400).json({ success: false, message: "Missing required fields: name, mainCategory, or coverImage" });
@@ -262,6 +268,9 @@ export const addSubCategory = async (req, res) => {
       name,
       mainCategory,
       coverImage,
+      metaTitle,
+      metaDescription,
+      metaKeywords
     });
     // The pre-save hook in SubCategory model generates the unique slug.
     await newSubCategory.save();
@@ -323,7 +332,7 @@ export const editSubCategory = async (req, res) => {
       { ...updateFields, updatedAt: new Date() },
       { new: true, runValidators: true }
     );
-    
+
     // NOTE: The pre-save hook in the SubCategory model will automatically regenerate 
     // the 'slug' if 'name' was updated, which is handled implicitly by the update.
 

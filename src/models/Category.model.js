@@ -34,6 +34,10 @@ const categorySchema = new mongoose.Schema(
       trim: true,
       default: "https://placehold.co/1200x600?text=Category+Cover",
     },
+    // SEO Fields
+    metaTitle: { type: String, trim: true },
+    metaDescription: { type: String, trim: true },
+    metaKeywords: { type: [String], default: [] },
   },
   { timestamps: true }
 );

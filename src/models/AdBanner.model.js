@@ -41,6 +41,23 @@ const bannerSchema = mongoose.Schema(
             default: 'standard'
         },
 
+        // --- Media Configuration ---
+        mediaType: {
+            type: String,
+            enum: ['image', 'video'],
+            default: 'image'
+        },
+        videoUrl: {
+            type: String, // Required if mediaType is 'video'
+            default: null
+        },
+
+        // --- Content Visibility ---
+        showTitle: { // To toggle Page Title visibility (different from showOverlay)
+            type: Boolean,
+            default: true
+        },
+
         // --- Schedule ---
         activeFrom: {
             type: Date,
@@ -96,6 +113,18 @@ bannerSchema.index({ activeFrom: 1, activeUntil: 1 }); // Index for time-based q
 bannerSchema.pre('save', function (next) {
     if (this.placement.length === 0) {
         return next(new Error('At least one placement location is required.'));
+    }
+
+    // Media Validation
+    if (this.mediaType === 'video') {
+        if (!this.videoUrl) {
+            return next(new Error('Video URL is required for video banners.'));
+        }
+    } else {
+        // Default to image
+        if (!this.imageUrl) {
+            return next(new Error('Image URL is required for image banners.'));
+        }
     }
 
     if (this.isVendorSpecific) {

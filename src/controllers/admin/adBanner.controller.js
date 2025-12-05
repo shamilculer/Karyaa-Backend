@@ -35,11 +35,16 @@ export const createBanner = async (req, res) => {
             tagline,
             mobileImageUrl,
             activeFrom,
-            activeUntil
+            activeUntil,
+            mediaType,
+            videoUrl,
+            showTitle,
+            displayMode,
+            showOverlay
         } = req.body;
 
-        if (!name || !imageUrl || !placement || placement.length === 0) {
-            return sendError(res, { message: "Name, image, placement required." }, 400);
+        if (!name || !placement || placement.length === 0) {
+            return sendError(res, { message: "Name and placement are required." }, 400);
         }
 
         if (isVendorSpecific) {
@@ -61,7 +66,7 @@ export const createBanner = async (req, res) => {
 
         const banner = new AdBanner({
             name,
-            imageUrl,
+            imageUrl, // Model will validate this if mediaType is image
             placement,
             isVendorSpecific,
             vendor: isVendorSpecific ? vendor : null,
@@ -71,7 +76,12 @@ export const createBanner = async (req, res) => {
             tagline,
             mobileImageUrl,
             activeFrom,
-            activeUntil
+            activeUntil,
+            mediaType: mediaType || 'image',
+            videoUrl,
+            showTitle: showTitle ?? true,
+            displayMode: displayMode || 'standard',
+            showOverlay: showOverlay ?? true
         });
 
         const saved = await banner.save();

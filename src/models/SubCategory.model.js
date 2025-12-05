@@ -37,6 +37,10 @@ const subCategorySchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // SEO Fields
+    metaTitle: { type: String, trim: true },
+    metaDescription: { type: String, trim: true },
+    metaKeywords: { type: [String], default: [] },
   },
   { timestamps: true }
 );
