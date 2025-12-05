@@ -1515,3 +1515,136 @@ export const deleteAdditionalDocument = async (req, res) => {
     });
   }
 };
+
+// ==================== DELETE VENDOR ====================
+
+// Delete vendor (Admin)
+export const deleteVendor = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid vendor ID",
+      });
+    }
+
+    // Find vendor first
+    const vendor = await Vendor.findById(id);
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    // Delete all gallery items and their S3 files
+    const galleryItems = await GalleryItem.find({ vendor: id });
+    if (galleryItems.length > 0) {
+      const { deleteS3Object, getKeyFromUrl } = await import("../../utils/s3.js");
+      for (const item of galleryItems) {
+        if (item.url) {
+          try {
+            const key = getKeyFromUrl(item.url);
+            if (key) {
+              await deleteS3Object(key);
+            }
+          } catch (s3Error) {
+            console.error(`Error deleting gallery item from S3:`, s3Error);
+          }
+        }
+      }
+      await GalleryItem.deleteMany({ vendor: id });
+    }
+
+    // Delete all packages and their cover images
+    const packages = await Package.find({ vendor: id });
+    if (packages.length > 0) {
+      const { deleteS3Object, getKeyFromUrl } = await import("../../utils/s3.js");
+      for (const pkg of packages) {
+        if (pkg.coverImage) {
+          try {
+            const key = getKeyFromUrl(pkg.coverImage);
+            if (key) {
+              await deleteS3Object(key);
+            }
+          } catch (s3Error) {
+            console.error(`Error deleting package cover image from S3:`, s3Error);
+          }
+        }
+      }
+      await Package.deleteMany({ vendor: id });
+    }
+
+    // Delete vendor profile images and documents from S3
+    const { deleteS3Object, getKeyFromUrl } = await import("../../utils/s3.js");
+
+    // Delete business logo
+    if (vendor.businessLogo) {
+      try {
+        const key = getKeyFromUrl(vendor.businessLogo);
+        if (key) await deleteS3Object(key);
+      } catch (s3Error) {
+        console.error("Error deleting business logo from S3:", s3Error);
+      }
+    }
+
+    // Delete owner profile image
+    if (vendor.ownerProfileImage) {
+      try {
+        const key = getKeyFromUrl(vendor.ownerProfileImage);
+        if (key) await deleteS3Object(key);
+      } catch (s3Error) {
+        console.error("Error deleting owner profile image from S3:", s3Error);
+      }
+    }
+
+    // Delete document files
+    const documentFields = [
+      vendor.tradeLicenseCopy,
+      vendor.emiratesIdCopy,
+      vendor.businessLicenseCopy,
+      vendor.passportOrIdCopy
+    ];
+
+    for (const docUrl of documentFields) {
+      if (docUrl) {
+        try {
+          const key = getKeyFromUrl(docUrl);
+          if (key) await deleteS3Object(key);
+        } catch (s3Error) {
+          console.error("Error deleting document from S3:", s3Error);
+        }
+      }
+    }
+
+    // Delete additional documents
+    if (vendor.additionalDocuments && vendor.additionalDocuments.length > 0) {
+      for (const doc of vendor.additionalDocuments) {
+        if (doc.documentUrl) {
+          try {
+            const key = getKeyFromUrl(doc.documentUrl);
+            if (key) await deleteS3Object(key);
+          } catch (s3Error) {
+            console.error("Error deleting additional document from S3:", s3Error);
+          }
+        }
+      }
+    }
+
+    // Finally, delete the vendor
+    await Vendor.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Vendor and all associated data deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting vendor:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "An error occurred while deleting vendor",
+    });
+  }
+};

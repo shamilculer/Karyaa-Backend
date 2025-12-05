@@ -53,7 +53,8 @@ import {
   addAdminComment,
   deleteAdminComment,
   addAdditionalDocument,
-  deleteAdditionalDocument
+  deleteAdditionalDocument,
+  deleteVendor
 } from "../../controllers/admin/vendor.controller.js";
 import { createBanner, deleteBanner, getAllBanners, toggleStatus, updateBanner } from "../../controllers/admin/adBanner.controller.js";
 import { deleteReferrals, getReferrals, updateReferralStatus } from "../../controllers/user/referral.controller.js";
@@ -111,6 +112,7 @@ router.put("/vendors/:id/status", verifyToken, updateVendorStatus);
 router.put("/vendors/:id/features", verifyToken, updateVendorFeatures)
 router.put("/vendors/:id/toggle-recommendation", verifyToken, toggleRecommended)
 router.patch("/vendors/:id/duration", verifyToken, updateVendorDuration);
+router.delete("/vendors/:id", verifyToken, deleteVendor);
 
 router.patch("/vendors/:id/documents", verifyToken, updateVendorDocuments);
 router.put("/vendors/:id/details", verifyToken, updateVendorDetails);

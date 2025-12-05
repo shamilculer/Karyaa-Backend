@@ -28,7 +28,7 @@ export const getAllActiveBundles = async (req, res) => {
   try {
     const bundles = await Bundle.find({ status: 'active' })
       .sort('displayOrder')
-      .select('-__v -subscribersCount -status -description'); 
+      .select('-__v -subscribersCount -status -description');
 
     res.status(200).json({
       success: true,
@@ -36,9 +36,9 @@ export const getAllActiveBundles = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching all active bundles:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || "Failed to fetch active bundles." 
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch active bundles."
     });
   }
 };
@@ -93,8 +93,7 @@ export const getVendorSubscriptionStatus = async (req, res) => {
       .populate({
         path: "selectedBundle",
         select: "name price duration bonusPeriod features",
-      })
-      .lean();
+      });
 
     if (!vendor) {
       return res.status(404).json({
@@ -102,16 +101,18 @@ export const getVendorSubscriptionStatus = async (req, res) => {
         message: "Vendor profile not found.",
       });
     }
-    
+
     const isActive =
       vendor.vendorStatus === "approved" &&
       vendor.subscriptionEndDate &&
       new Date() <= vendor.subscriptionEndDate;
-      
+
     const bundleFeatures = vendor.selectedBundle?.features || [];
     const customFeatures = vendor.customFeatures || [];
     const allFeatures = [...bundleFeatures, ...customFeatures];
 
+    // Use the vendor method to get proper duration calculation
+    const durationData = await vendor.getTotalSubscriptionDuration();
 
     const responseData = {
       vendorName: vendor.businessName,
@@ -121,12 +122,8 @@ export const getVendorSubscriptionStatus = async (req, res) => {
         id: vendor.selectedBundle?._id,
         name: vendor.selectedBundle?.name,
         price: vendor.selectedBundle?.price,
-        duration: vendor.customDuration?.value 
-            ? vendor.customDuration // Use custom duration if available
-            : vendor.selectedBundle?.duration, // Otherwise, use bundle duration
-        bonusPeriod: vendor.customDuration?.bonusPeriod 
-            ? vendor.customDuration.bonusPeriod // Use custom bonus if available
-            : vendor.selectedBundle?.bonusPeriod, // Otherwise, use bundle bonus
+        duration: durationData?.base || vendor.selectedBundle?.duration,
+        bonusPeriod: durationData?.bonus, // This will now properly return the bonus period
         features: allFeatures,
       },
       subscription: {
@@ -134,7 +131,7 @@ export const getVendorSubscriptionStatus = async (req, res) => {
         endDate: vendor.subscriptionEndDate,
       },
       // Include raw custom fields for debugging/admin
-      customDuration: vendor.customDuration, 
+      customDuration: vendor.customDuration,
       customFeatures: vendor.customFeatures,
     };
 

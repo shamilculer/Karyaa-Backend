@@ -140,3 +140,57 @@ export const flagReviewForRemoval = async (req, res) => {
         });
     }
 };
+
+/**
+ * @desc Unflag a review (Remove flag - Vendor Action)
+ * @route PATCH /api/v1/reviews/unflag/:reviewId
+ * @access Vendor (protected via verifyVendor middleware)
+ */
+export const unflagReview = async (req, res) => {
+    try {
+        const { reviewId } = req.params;
+        const vendorId = req.user?.id; // decoded from JWT
+
+        // ✅ Ensure a valid review ID format
+        if (!reviewId) {
+            return res.status(400).json({ message: "Review ID is required." });
+        }
+
+        // ✅ Find the review
+        const review = await Review.findById(reviewId).populate("vendor");
+        if (!review) {
+            return res.status(404).json({ message: "Review not found." });
+        }
+
+        // ✅ Ensure review belongs to this vendor
+        if (review.vendor._id.toString() !== vendorId) {
+            return res.status(403).json({
+                message: "You are not allowed to unflag reviews for other vendors.",
+            });
+        }
+
+        // ✅ Check if review is actually flagged
+        if (review.flaggedForRemoval === false) {
+            return res.status(400).json({
+                message: "This review is not flagged for removal.",
+            });
+        }
+
+        // ✅ Remove flag and restore to Approved status
+        review.flaggedForRemoval = false;
+        review.status = "Approved";
+        await review.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Review flag removed successfully and status restored to Approved.",
+            review,
+        });
+
+    } catch (error) {
+        console.error("Error unflagging review:", error);
+        return res.status(500).json({
+            message: "Server error while unflagging review.",
+        });
+    }
+};

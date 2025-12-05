@@ -151,19 +151,34 @@ export const getRevenueOverTime = async (req, res) => {
       },
       {
         $group: {
-          _id: {
-            year: { $year: "$subscriptionStartDate" },
-            month: { $month: "$subscriptionStartDate" },
-            ...(timeframe === "24H" || timeframe === "1W"
-              ? { day: { $dayOfMonth: "$subscriptionStartDate" } }
-              : {}),
-          },
+          _id: timeframe === "24H"
+            ? {
+              year: { $year: "$subscriptionStartDate" },
+              month: { $month: "$subscriptionStartDate" },
+              day: { $dayOfMonth: "$subscriptionStartDate" },
+              hour: { $hour: "$subscriptionStartDate" },
+            }
+            : timeframe === "1W"
+              ? {
+                year: { $year: "$subscriptionStartDate" },
+                month: { $month: "$subscriptionStartDate" },
+                day: { $dayOfMonth: "$subscriptionStartDate" },
+              }
+              : timeframe === "1M" || timeframe === "3M"
+                ? {
+                  year: { $year: "$subscriptionStartDate" },
+                  week: { $week: "$subscriptionStartDate" },
+                }
+                : {
+                  year: { $year: "$subscriptionStartDate" },
+                  month: { $month: "$subscriptionStartDate" },
+                },
           revenue: { $sum: "$bundleInfo.price" },
           subscriptions: { $sum: 1 },
         },
       },
       {
-        $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 },
+        $sort: { "_id.year": 1, "_id.month": 1, "_id.week": 1, "_id.day": 1, "_id.hour": 1 },
       },
     ]);
 

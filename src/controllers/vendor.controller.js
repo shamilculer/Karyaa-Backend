@@ -53,36 +53,29 @@ export const registerVendor = async (req, res) => {
 
   try {
     // Check for existing vendor conflicts
-    const conflictQuery = { $or: [{ email }] };
+    const conflictQuery = {
+      $or: [
+        { email },
+        { phoneNumber }
+      ]
+    };
 
     // Only check tradeLicenseNumber if vendor is not international
     if (!isInternational && tradeLicenseNumber) {
       conflictQuery.$or.push({ tradeLicenseNumber });
     }
 
-    // NOTE: We generally avoid checking for duplicates on international documents
-    // (like passport or business license copy URLs) as they may not be unique
-    // identifiers like a UAE Trade License Number, or we rely on the Mongoose 
-    // unique index check for Business Name (which is done on save).
-
     const existingVendor = await Vendor.findOne(conflictQuery);
 
     if (existingVendor) {
-      let message =
-        "A vendor account already exists with the information provided.";
+      let message = "A vendor account already exists with the information provided.";
 
-      if (
-        existingVendor.email === email &&
-        existingVendor.tradeLicenseNumber === tradeLicenseNumber
-      ) {
-        message =
-          "Your email and Trade License Number are both already registered with an existing vendor account.";
-      } else if (existingVendor.email === email) {
-        message =
-          "The email address you entered is already registered. Please use a different email or log in.";
-      } else if (existingVendor.tradeLicenseNumber === tradeLicenseNumber) {
-        message =
-          "The Trade License Number you entered is already registered with another account.";
+      if (existingVendor.email === email) {
+        message = "The email address you entered is already registered. Please use a different email or log in.";
+      } else if (existingVendor.phoneNumber === phoneNumber) {
+        message = "The phone number you entered is already registered with another account.";
+      } else if (!isInternational && existingVendor.tradeLicenseNumber === tradeLicenseNumber) {
+        message = "The Trade License Number you entered is already registered with another account.";
       }
 
       return res.status(400).json({
@@ -290,14 +283,40 @@ export const registerVendor = async (req, res) => {
     console.error("Vendor registration error:", error);
 
     // Handle duplicate key errors (e.g., businessName)
+    // Handle duplicate key errors (e.g., businessName)
     if (error.code === 11000) {
-      if (error.keyPattern && error.keyPattern.businessName) {
-        return res.status(400).json({
-          success: false,
-          message: "A vendor with this business name already exists. Please choose a different name.",
-        });
+      if (error.keyPattern) {
+        if (error.keyPattern.businessName) {
+          return res.status(400).json({
+            success: false,
+            message: "A vendor with this business name already exists. Please choose a different name.",
+          });
+        }
+        if (error.keyPattern.email) {
+          return res.status(400).json({
+            success: false,
+            message: "The email address you entered is already registered. Please use a different email or log in.",
+          });
+        }
+        if (error.keyPattern.phoneNumber) {
+          return res.status(400).json({
+            success: false,
+            message: "The phone number you entered is already registered with another account.",
+          });
+        }
+        if (error.keyPattern.tradeLicenseNumber) {
+          return res.status(400).json({
+            success: false,
+            message: "The Trade License Number you entered is already registered with another account.",
+          });
+        }
       }
-      // Handle other potential duplicates if necessary (though most are handled by the initial check)
+
+      // Fallback for generic duplicate error
+      return res.status(400).json({
+        success: false,
+        message: "A duplicate record exists. Please check your information and try again.",
+      });
     }
 
     if (error.name === "ValidationError") {

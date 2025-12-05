@@ -218,7 +218,7 @@ export const createAdmin = async (req, res) => {
         });
     }
 
-    const { fullName, email, password, adminLevel, accessControl } = req.body;
+    const { fullName, email, password, adminLevel, accessControl, profileImage } = req.body;
 
     if (!fullName || !email || !password) {
         return res.status(400).json({
@@ -243,6 +243,8 @@ export const createAdmin = async (req, res) => {
             email,
             password,
             adminLevel: adminLevel || 'moderator',
+            // Add profile image if provided
+            ...(profileImage && { profileImage }),
             // LOGIC FIX: Check adminLevel and set permissions accordingly
             accessControl: (adminLevel === 'admin')
                 ? {
@@ -332,12 +334,12 @@ export const toggleAdminStatus = async (req, res) => {
         }
 
         if (req.user.adminLevel !== 'admin' && targetAdmin.adminLevel === 'admin') {
-             return res.status(403).json({
+            return res.status(403).json({
                 success: false,
                 message: "Insufficient privilege. You cannot modify a Admin.",
             });
         }
-        
+
         const newStatus = !targetAdmin.isActive;
 
         const updatedAdmin = await Admin.findByIdAndUpdate(
@@ -372,7 +374,7 @@ export const deleteAdmin = async (req, res) => {
     const { id: adminIdToDelete } = req.params; // Get the ID from the URL parameter
 
     const userId = req.user._id?.toString() || req.user.id?.toString();
-    
+
     if (userId === adminIdToDelete) {
         return res.status(400).json({
             success: false,
@@ -391,14 +393,14 @@ export const deleteAdmin = async (req, res) => {
         }
 
         if (req.user.adminLevel !== 'admin' && targetAdmin.adminLevel === 'admin') {
-             return res.status(403).json({
+            return res.status(403).json({
                 success: false,
                 message: "Insufficient privilege. You cannot delete a Super Admin.",
             });
         }
-        
+
         if (req.user.adminLevel === 'moderator' && targetAdmin.adminLevel === 'admin') {
-             return res.status(403).json({
+            return res.status(403).json({
                 success: false,
                 message: "Insufficient privilege. You cannot delete a higher-level administrator.",
             });
@@ -460,7 +462,7 @@ export const updateAdminAccessControl = async (req, res) => {
                 message: "Target administrator not found.",
             });
         }
-        
+
         // 5. Hierarchy Guard: Prevent lower-level admins from modifying higher-level admins
         // 'moderator' cannot update 'admin'
         if (req.user.adminLevel !== 'admin' && targetAdmin.adminLevel === 'admin') {
@@ -469,11 +471,11 @@ export const updateAdminAccessControl = async (req, res) => {
                 message: "Insufficient privilege. You cannot modify the permissions of a Super Admin.",
             });
         }
-        
+
         // 6. Prevent 'admin' level accounts from being downgraded
         // 'admin' level should always have full access (as defined in createAdmin)
         if (targetAdmin.adminLevel === 'admin') {
-             return res.status(400).json({
+            return res.status(400).json({
                 success: false,
                 message: "Permissions for Super Admin accounts cannot be manually overridden. Use adminLevel change instead.",
             });
@@ -484,7 +486,7 @@ export const updateAdminAccessControl = async (req, res) => {
         const updatedAdmin = await Admin.findByIdAndUpdate(
             adminIdToUpdate,
             { accessControl: newAccessControl },
-            { new: true, runValidators: true } 
+            { new: true, runValidators: true }
         );
 
         // 8. Success Response
@@ -506,7 +508,7 @@ export const updateAdminAccessControl = async (req, res) => {
                 errors: errors
             });
         }
-        
+
         // 9. Generic Server Error
         return res.status(500).json({
             success: false,
@@ -530,9 +532,9 @@ export const updateAdminProfile = async (req, res) => {
     try {
         // Check if email is being changed and if it's already taken
         if (email) {
-            const existingAdmin = await Admin.findOne({ 
-                email, 
-                _id: { $ne: adminId } 
+            const existingAdmin = await Admin.findOne({
+                email,
+                _id: { $ne: adminId }
             });
 
             if (existingAdmin) {

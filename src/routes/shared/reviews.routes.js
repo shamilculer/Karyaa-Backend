@@ -7,7 +7,8 @@ import {
 } from "../../controllers/shared/reviews.controller.js";
 import {
     getAllVendorReviews,
-    flagReviewForRemoval
+    flagReviewForRemoval,
+    unflagReview
 } from "../../controllers/vendor/reviews.controller.js";
 import {
     getAllReviews,
@@ -31,6 +32,7 @@ router.delete('/:reviewId', verifyToken, deleteReview);
 // Vendor routes - Get all reviews for their vendor, flag reviews
 router.get('/vendor/all/:vendorId', verifyVendor, getAllVendorReviews);
 router.patch('/flag/:reviewId', verifyVendor, flagReviewForRemoval);
+router.patch('/unflag/:reviewId', verifyVendor, unflagReview);
 
 // Admin routes - Manage all reviews
 router.get('/admin/all', verifyAdmin, getAllReviews);

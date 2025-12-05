@@ -125,7 +125,7 @@ export const getUserGrowth = async (req, res) => {
             month: { $month: "$createdAt" },
             ...(timeframe === "24H"
               ? { day: { $dayOfMonth: "$createdAt" }, hour: { $hour: "$createdAt" } }
-              : timeframe === "1W"
+              : (timeframe === "1W" || timeframe === "1M")
                 ? { day: { $dayOfMonth: "$createdAt" } }
                 : {}),
           },
@@ -155,9 +155,11 @@ export const getUserGrowth = async (req, res) => {
           count: hourData ? hourData.count : 0
         });
       }
-    } else if (timeframe === "1W") {
-      // Generate all 7 days
-      for (let i = 6; i >= 0; i--) {
+    } else if (timeframe === "1W" || timeframe === "1M") {
+      // Generate days based on timeframe (7 or 30)
+      const days = timeframe === "1W" ? 7 : 30;
+
+      for (let i = days - 1; i >= 0; i--) {
         const date = new Date(now);
         date.setDate(date.getDate() - i);
         const dayData = userGrowth.find(item =>
@@ -175,8 +177,8 @@ export const getUserGrowth = async (req, res) => {
         });
       }
     } else {
-      // For monthly data (1M, 3M, 6M, 1Y)
-      const months = timeframe === "1M" ? 4 : timeframe === "3M" ? 12 : timeframe === "6M" ? 6 : 12;
+      // For monthly data (3M, 6M, 1Y)
+      const months = timeframe === "3M" ? 12 : timeframe === "6M" ? 6 : 12;
       for (let i = months - 1; i >= 0; i--) {
         const date = new Date(now);
         date.setMonth(date.getMonth() - i);
@@ -228,7 +230,7 @@ export const getVendorGrowth = async (req, res) => {
             month: { $month: "$createdAt" },
             ...(timeframe === "24H"
               ? { day: { $dayOfMonth: "$createdAt" }, hour: { $hour: "$createdAt" } }
-              : timeframe === "1W"
+              : (timeframe === "1W" || timeframe === "1M")
                 ? { day: { $dayOfMonth: "$createdAt" } }
                 : {}),
           },
@@ -257,9 +259,11 @@ export const getVendorGrowth = async (req, res) => {
           count: hourData ? hourData.count : 0
         });
       }
-    } else if (timeframe === "1W") {
-      // Generate all 7 days
-      for (let i = 6; i >= 0; i--) {
+    } else if (timeframe === "1W" || timeframe === "1M") {
+      // Generate days based on timeframe (7 or 30)
+      const days = timeframe === "1W" ? 7 : 30;
+
+      for (let i = days - 1; i >= 0; i--) {
         const date = new Date(now);
         date.setDate(date.getDate() - i);
         const dayData = vendorGrowth.find(item =>
@@ -277,8 +281,8 @@ export const getVendorGrowth = async (req, res) => {
         });
       }
     } else {
-      // For monthly data (1M, 3M, 6M, 1Y)
-      const months = timeframe === "1M" ? 4 : timeframe === "3M" ? 12 : timeframe === "6M" ? 6 : 12;
+      // For monthly data (3M, 6M, 1Y)
+      const months = timeframe === "3M" ? 12 : timeframe === "6M" ? 6 : 12;
       for (let i = months - 1; i >= 0; i--) {
         const date = new Date(now);
         date.setMonth(date.getMonth() - i);
@@ -413,7 +417,7 @@ export const getLeadMetrics = async (req, res) => {
             month: { $month: "$createdAt" },
             ...(timeframe === "24H"
               ? { day: { $dayOfMonth: "$createdAt" }, hour: { $hour: "$createdAt" } }
-              : timeframe === "1W"
+              : (timeframe === "1W" || timeframe === "1M")
                 ? { day: { $dayOfMonth: "$createdAt" } }
                 : {}),
           },
@@ -443,9 +447,11 @@ export const getLeadMetrics = async (req, res) => {
           count: hourData ? hourData.count : 0
         });
       }
-    } else if (timeframe === "1W") {
-      // Generate all 7 days
-      for (let i = 6; i >= 0; i--) {
+    } else if (timeframe === "1W" || timeframe === "1M") {
+      // Generate days based on timeframe (7 or 30)
+      const days = timeframe === "1W" ? 7 : 30;
+
+      for (let i = days - 1; i >= 0; i--) {
         const date = new Date(now);
         date.setDate(date.getDate() - i);
         const dayData = leadTrends.find(item =>
@@ -463,8 +469,8 @@ export const getLeadMetrics = async (req, res) => {
         });
       }
     } else {
-      // For monthly data (1M, 3M, 6M, 1Y)
-      const months = timeframe === "1M" ? 4 : timeframe === "3M" ? 12 : timeframe === "6M" ? 6 : 12;
+      // For monthly data (3M, 6M, 1Y)
+      const months = timeframe === "3M" ? 12 : timeframe === "6M" ? 6 : 12;
       for (let i = months - 1; i >= 0; i--) {
         const date = new Date(now);
         date.setMonth(date.getMonth() - i);

@@ -40,6 +40,7 @@ export const getCategory = async (req, res) => {
           path: "subCategories",
           select: "_id name slug mainCategory",
           populate: { path: "mainCategory", select: "_id name slug" }, // nested populate
+          match: { vendorCount: { $gt: 0 } }
         });
     }
 
@@ -50,6 +51,7 @@ export const getCategory = async (req, res) => {
           path: "subCategories",
           select: "_id name slug mainCategory coverImage",
           populate: { path: "mainCategory", select: "_id name slug" },
+          match: { vendorCount: { $gt: 0 } }
         });
     }
 

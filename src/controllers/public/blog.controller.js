@@ -54,9 +54,9 @@ export const getBlogPost = async (req, res) => {
 
     // 🧩 Check if slugOrId is a valid MongoDB ObjectId
     if (mongoose.Types.ObjectId.isValid(slugOrId)) {
-      blog = await Blog.findById(slugOrId).populate("author", "username profileImage");
+      blog = await Blog.findById(slugOrId).populate("author", "fullName profileImage");
     } else {
-      blog = await Blog.findOne({ slug: slugOrId }).populate("author", "username profileImage");
+      blog = await Blog.findOne({ slug: slugOrId }).populate("author", "fullName profileImage");
     }
 
     if (!blog) {

@@ -8,8 +8,8 @@ import Idea from "../../models/Idea.model.js";
  */
 export const getIdeas = async (req, res) => {
     try {
-        const { category, search } = req.query; 
-        
+        const { category, search } = req.query;
+
         // Pagination Parameters
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
@@ -20,10 +20,10 @@ export const getIdeas = async (req, res) => {
 
         // Category Filter - look up by name
         if (category && category.trim() !== "") {
-            const categoryDoc = await IdeaCategory.findOne({ 
-                name: category.trim() 
+            const categoryDoc = await IdeaCategory.findOne({
+                name: category.trim()
             });
-            
+
             if (categoryDoc) {
                 query.category = categoryDoc._id;
             } else {
@@ -82,8 +82,29 @@ export const getIdeas = async (req, res) => {
 
 export const getIdeaCategories = async (req, res) => {
     try {
-        const categories = await IdeaCategory.find({})
-            .sort({ displayOrder: 1, name: 1 }) 
+        const categories = await IdeaCategory.aggregate([
+            {
+                $lookup: {
+                    from: "ideas",
+                    localField: "_id",
+                    foreignField: "category",
+                    as: "ideas"
+                }
+            },
+            {
+                $addFields: {
+                    ideasCount: { $size: "$ideas" }
+                }
+            },
+            {
+                $project: {
+                    ideas: 0 // Remove the heavy ideas array from result
+                }
+            },
+            {
+                $sort: { ideasCount: -1, name: 1 }
+            }
+        ]);
 
         res.status(200).json({
             success: true,

@@ -44,22 +44,24 @@ const subCategorySchema = new mongoose.Schema(
 // Case-insensitive unique index for name
 subCategorySchema.index({ name: 1 }, { unique: true, collation: { locale: "en", strength: 2 } });
 
-// Pre-save hook to generate a unique slug
-subCategorySchema.pre("save", async function (next) {
+// Pre-validate hook to generate a unique slug
+subCategorySchema.pre("validate", async function (next) {
   // Check if name has been modified or if this is a new document and slug is not set
   if (!this.isModified("name") && this.slug) return next();
 
   // If the name is being modified (or it's new), regenerate the slug
-  let baseSlug = this.name.toLowerCase().replace(/\s+/g, "-");
-  let slug = baseSlug;
-  let count = 1;
+  if (this.name) {
+    let baseSlug = this.name.toLowerCase().replace(/\s+/g, "-");
+    let slug = baseSlug;
+    let count = 1;
 
-  // Check for existing slug conflicts
-  while (await mongoose.models.SubCategory.findOne({ slug })) {
-    slug = `${baseSlug}-${count++}`;
+    // Check for existing slug conflicts
+    while (await mongoose.models.SubCategory.findOne({ slug })) {
+      slug = `${baseSlug}-${count++}`;
+    }
+
+    this.slug = slug;
   }
-
-  this.slug = slug;
   next();
 });
 
