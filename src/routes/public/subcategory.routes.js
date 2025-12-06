@@ -1,7 +1,8 @@
-import{
+import {
     getSubcategories,
     getSubCategory
-} from "../../controllers/public/subCategory.controller.js"
+} from "../../controllers/public/subcategory.controller.js"
+
 import express from "express"
 
 const router = express.Router();
