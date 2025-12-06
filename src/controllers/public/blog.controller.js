@@ -1,7 +1,6 @@
 import Blog from "../../models/Blog.model.js";
 import mongoose from "mongoose";
 
-
 // -------------------------------------------
 // @desc    Get only published blogs (public use)
 // @route   GET /api/blogs/published
@@ -112,6 +111,4 @@ export const getBlogPost = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
-
 

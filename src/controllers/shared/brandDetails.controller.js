@@ -1,6 +1,5 @@
 import BrandDetails from "../../models/BrandDetails.model.js";
 
-
 export const getBrandDetails = async (req, res) => {
   try {
     const settings = await BrandDetails.findOne();

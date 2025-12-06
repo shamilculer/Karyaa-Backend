@@ -12,5 +12,4 @@ router.get("/", getCategories);
 router.get("/with-vendors", getCategoriesWithVendors); // Must be before /:identifier
 router.get("/:identifier", getCategory);
 
-
 export default router;

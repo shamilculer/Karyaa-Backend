@@ -10,5 +10,4 @@ const router = express.Router();
 router.get("/", getIdeas);
 router.get("/categories", getIdeaCategories);
 
-
 export default router;

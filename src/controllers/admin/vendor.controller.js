@@ -516,7 +516,6 @@ export const toggleRecommended = async (req, res) => {
       .populate("mainCategory")
       .populate("subCategories");
 
-
     if (!vendor) {
       return res.status(404).json({
         success: false,

@@ -33,9 +33,6 @@ const pageSEOSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-// Index for fast lookups by identifier
-pageSEOSchema.index({ pageIdentifier: 1 });
-
 const PageSEO = mongoose.models.PageSEO || mongoose.model("PageSEO", pageSEOSchema);
 
 export default PageSEO;

@@ -76,7 +76,6 @@ router.put("/manage-categories/subcategory/:id", verifyToken, editSubCategory);
 router.delete("/manage-categories/subcategory/delete", verifyToken, deleteSubCategories);
 router.patch("/manage-categories/subcategory/toggle-flag", verifyToken, toggleSubcategoryFlags);
 
-
 router.post("/blog/new", verifyToken, addBlogPost)
 router.put("/blog/edit/:id", verifyToken, editBlogPost)
 router.get("/blog/all", verifyToken, getAllBlogs);
@@ -86,11 +85,9 @@ router.patch("/blog/toggle-status", verifyToken, toggleBlogStatus);
 
 router.put("/brand-details", updateBrandDetails);
 
-
 router.get("/tickets/all", verifyToken, getAllSupportTickets);
 router.put("/tickets/:id/status", verifyToken, updateTicketStatus);
 router.delete("/tickets/:id", verifyToken, deleteTicket)
-
 
 router.get("/bundles/all", verifyToken, getAllBundles)
 router.post("/bundles/new", verifyToken, createBundle)
@@ -98,13 +95,11 @@ router.put("/bundles/:id", verifyToken, updateBundle)
 router.put("/bundles/:id/status", verifyToken, toggleBundleStatus)
 router.delete("/bundles/delete/:id", verifyToken, deleteBundle)
 
-
 router.post("/ideas/new", verifyToken, createIdea)
 router.put("/ideas/:id", verifyToken, updateIdea)
 router.delete("/ideas/delete/:id", verifyToken, deleteIdea);
 router.put("/ideas/category/:id/update", verifyToken, updateIdeaCategory)
 router.post("/ideas/category/new", verifyToken, createIdeaCategory)
-
 
 router.get("/vendors/all", verifyToken, getAllVendors);
 router.get("/vendors/:id", verifyToken, getVendorById)
@@ -136,7 +131,6 @@ router.delete("/vendors/:id/comments/:commentId", verifyToken, deleteAdminCommen
 router.post("/vendors/:id/additional-documents", verifyToken, addAdditionalDocument);
 router.delete("/vendors/:id/additional-documents/:documentId", verifyToken, deleteAdditionalDocument);
 
-
 router.get("/ad-banner/all", verifyToken, getAllBanners);
 router.put("/ad-banner/:id", verifyToken, updateBanner);
 router.put("/ad-banner/:id/status", verifyToken, toggleStatus)
@@ -167,6 +161,5 @@ router.delete("/content/:key", verifyToken, deleteContent);
 router.get("/leads", verifyToken, adminGetAllLeads);
 router.patch("/leads/status", verifyToken, adminUpdateLeadStatus);
 router.delete("/leads", verifyToken, adminDeleteLead);
-
 
 export default router;

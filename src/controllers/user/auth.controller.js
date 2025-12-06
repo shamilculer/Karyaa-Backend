@@ -82,7 +82,6 @@ export const createUser = async (req, res) => {
     }
 };
 
-
 // -------------------------
 // @desc    Login user
 // @route   POST /api/user/auth/login

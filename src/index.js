@@ -1,7 +1,9 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import connectDB from './config/db.js';
 
 import utilRoutes from './routes/shared/utils.routes.js';
@@ -33,22 +35,31 @@ import revenueAnalyticsRoute from "./routes/admin/analytics/revenueAnalytics.rou
 import dashboardRoute from "./routes/admin/dashboard.routes.js"
 
 
-import cookieParser from 'cookie-parser';
-
-import { seed } from './utils/seed.js';
-
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }))
+// Security Middleware
+app.use(helmet());
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 150,
+  message: "Too many requests from this IP, please try again after 15 minutes",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
+
+app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
 app.get('/', (req, res) => {
   res.send('Karyaa Event Vendor Marketplace Server is running');
 });
+
 
 app.use('/api/v1/util', utilRoutes);
 app.use('/api/v1/user', userRoutes);
@@ -81,7 +92,6 @@ app.use('/api/v1/admin/seo', seoRoutes)
 const startServer = async () => {
   try {
     await connectDB();
-    // await seed()
     app.listen(PORT, () => {
       console.log(`Server is running on http://localhost:${PORT}`);
     });

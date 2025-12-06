@@ -1,6 +1,5 @@
 import BrandDetails from "../../models/BrandDetails.model.js";
 
-
 /**
  * @desc Update branding settings
  * @route PUT /api/brand-settings

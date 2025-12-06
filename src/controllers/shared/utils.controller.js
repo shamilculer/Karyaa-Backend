@@ -68,7 +68,6 @@ export const refreshAccessToken = async (req, res) => {
     // ✅ Generate new tokens (includes role automatically)
     const { accessToken, refreshToken: newRefreshToken } = generateTokens(account);
 
-
     res.status(200).json({
       success: true,
       role: account.role,
@@ -85,7 +84,6 @@ export const refreshAccessToken = async (req, res) => {
   }
 };
 
-
 export const getCurrentAdminData = async (req, res) => {
   const adminId = req.params.adminId;
 
@@ -99,7 +97,6 @@ export const getCurrentAdminData = async (req, res) => {
   try {
     const admin = await Admin.findById(adminId)
       .select("fullName profileImage role email phoneNumber adminLevel accessControl isActive");
-
 
     if (!admin) {
       return res.status(404).json({

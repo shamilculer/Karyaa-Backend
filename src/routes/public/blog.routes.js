@@ -10,5 +10,4 @@ const router = express.Router();
 router.get("/published", getPublishedBlogs);
 router.get("/:slugOrId", getBlogPost);
 
-
 export default router;

@@ -32,7 +32,6 @@ export const getVendorGalleryItems = async (req, res) => {
       .sort({ orderIndex: 1, createdAt: -1 })
       .lean();
 
-
     return res.status(200).json({
       success: true,
       count: items.length,
@@ -49,14 +48,12 @@ export const getVendorGalleryItems = async (req, res) => {
   }
 };
 
-
 export const getAllGalleryItems = async (req, res) => {
   try {
     // pagination params
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 30;
     const skip = (page - 1) * limit;
-
 
     // total count
     const totalItems = await GalleryItem.countDocuments();
@@ -147,7 +144,6 @@ export const addGalleryItems = async (req, res) => {
     });
   }
 };
-
 
 export const deleteGalleryItems = async (req, res) => {
   try {

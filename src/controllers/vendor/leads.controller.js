@@ -60,7 +60,6 @@ export const postLead = async (req, res) => {
     }
 }
 
-
 export const getVendorLeads = async (req, res) => {
     try {
         if (req.user.role !== "vendor" || !req.user.id) {
@@ -102,7 +101,6 @@ export const getVendorLeads = async (req, res) => {
         if (eventType) {
             finalFilter.eventType = eventType;
         }
-
 
         const leads = await Lead.find(finalFilter)
             .sort({ createdAt: -1 }) // Sort newest leads first
@@ -230,7 +228,6 @@ export const updateLeadStatus = async (req, res) => {
         });
     }
 };
-
 
 export const deleteLead = async (req, res) => {
     try {

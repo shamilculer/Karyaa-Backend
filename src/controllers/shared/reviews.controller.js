@@ -113,7 +113,6 @@ export const createReview = async (req, res) => {
         });
 
     } catch (error) {
-        console.log(error)
         if (error.code === 11000) {
             // Handles duplicate check via the unique index { vendor: 1, user: 1 }
             return res

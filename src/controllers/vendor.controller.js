@@ -50,7 +50,6 @@ export const registerVendor = async (req, res) => {
     twitterLink,
   } = req.body;
 
-
   try {
     // Check for existing vendor conflicts
     const conflictQuery = {
@@ -85,7 +84,6 @@ export const registerVendor = async (req, res) => {
     }
 
     const selectedBundleDoc = await Bundle.findById(selectedBundle);
-
 
     if (!selectedBundleDoc) {
       return res.status(400).json({
@@ -366,7 +364,6 @@ export const loginVendor = async (req, res) => {
       });
     }
 
-
     // TODO: replace this with 
     const isMatch = await bcrypt.compare(password, vendor.password);
     if (!isMatch) {
@@ -404,8 +401,6 @@ export const loginVendor = async (req, res) => {
   }
 };
 
-
-
 export const getApprovedVendors = async (req, res) => {
   // 1. Pagination Setup
   const page = parseInt(req.query.page) || 1;
@@ -426,7 +421,6 @@ export const getApprovedVendors = async (req, res) => {
     sort,
     occasion,
   } = req.query;
-
 
   let filterClauses = [{ vendorStatus: "approved" }];
 
@@ -636,7 +630,6 @@ export const getApprovedVendors = async (req, res) => {
   }
 };
 
-
 /**
  * @desc Get a single active Vendor by ID or Slug
  * @route GET /api/vendors/:identifier
@@ -723,7 +716,6 @@ export const getVendorOptions = async (req, res) => {
 export const getVendorsForComparison = async (req, res) => {
   const slugsQuery = req.query.slugs;
 
-
   if (!slugsQuery) {
     return res.status(200).json({ success: true, data: [] });
   }
@@ -731,9 +723,6 @@ export const getVendorsForComparison = async (req, res) => {
   const slugs = [
     ...new Set(slugsQuery.split(",").filter((s) => s.trim() !== "")),
   ];
-
-  console.log("📋 Parsed slugs array:", slugs);
-
   try {
     // First, check if vendor exists at all (ignore status)
     const allVendors = await Vendor.find({
@@ -765,7 +754,6 @@ export const getVendorsForComparison = async (req, res) => {
       .populate({ path: "subCategories", select: "name slug" })
       .lean();
 
-
     const orderedVendors = slugs
       .map((slug) => vendors.find((v) => v.slug === slug))
       .filter((v) => v);
@@ -780,7 +768,6 @@ export const getVendorsForComparison = async (req, res) => {
     });
   }
 };
-
 
 /**
  * @desc Get review statistics for a vendor
@@ -820,7 +807,6 @@ export const getVendorReviewStats = async (req, res) => {
   }
 };
 
-
 // Get unique cities for filter
 export const getVendorCities = async (req, res) => {
   try {
@@ -834,7 +820,6 @@ export const getVendorCities = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 
 export const getVendorProfileForEdit = async (req, res) => {
   const vendorId = req.user.id;
@@ -866,12 +851,10 @@ export const getVendorProfileForEdit = async (req, res) => {
   }
 };
 
-
 export const updateVendor = async (req, res) => {
   const vendorId = req.user.id;
 
   const updateData = { ...req.body };
-
 
   if (updateData.password) {
     delete updateData.password;
@@ -889,7 +872,6 @@ export const updateVendor = async (req, res) => {
     updateData.personalEmiratesIdNumber = undefined;
     updateData.emiratesIdCopy = undefined;
   }
-
 
   try {
     let coordinates;
@@ -913,7 +895,6 @@ export const updateVendor = async (req, res) => {
       finalAddress.coordinates = coordinates;
       updateData.address = finalAddress; // Update the main object with the new address structure
     }
-
 
     const updatedVendor = await Vendor.findByIdAndUpdate(
       vendorId,

@@ -54,7 +54,6 @@ export const getPageSEOByIdentifier = async (req, res) => {
     }
 };
 
-
 // --- Categories SEO ---
 
 export const getAllCategorySEO = async (req, res) => {

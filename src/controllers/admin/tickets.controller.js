@@ -23,7 +23,6 @@ export const getAllSupportTickets = async (req, res) => {
         const validCategories = ['Leads', 'profile', 'technical', 'content', 'other'];
         const validPriorities = ['low', 'medium', 'high', 'critical'];
 
-
         // 3. Build Query Object
         
         // Search Filter (by subject)
@@ -50,9 +49,6 @@ export const getAllSupportTickets = async (req, res) => {
             .sort({ createdAt: -1 })
             .skip((page - 1) * limit)
             .limit(limit);
-
-            console.log(tickets)
-
         res.status(200).json({
             success: true,
             count: tickets.length,

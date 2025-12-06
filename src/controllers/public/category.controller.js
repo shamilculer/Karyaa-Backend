@@ -21,7 +21,6 @@ export const getCategories = async (req, res) => {
   }
 };
 
-
 // -------------------------------------------
 // @desc    Get a single category by slug or ID
 // @route   GET /api/categories/:identifier

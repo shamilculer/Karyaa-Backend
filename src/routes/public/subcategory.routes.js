@@ -10,5 +10,4 @@ const router = express.Router();
 router.get('/', getSubcategories);
 router.get('/:identifier', getSubCategory);
 
-
 export default router

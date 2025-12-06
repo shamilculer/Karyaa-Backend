@@ -18,7 +18,6 @@ export const getCoordinatesFromAddress = async (addressData) => {
     
     const addressQuery = parts.join(', ');
 
-
     if (!addressQuery) {
         console.warn("Address fields were empty. Cannot geocode.");
         return null;
@@ -35,7 +34,6 @@ export const getCoordinatesFromAddress = async (addressData) => {
 
     const finalUrl = `${geocodeEndpoint}?${params.toString()}`;
 
-    
     // 3. Call the OpenCage Geocoding API using fetch
     try {
         const response = await fetch(finalUrl);
@@ -43,7 +41,6 @@ export const getCoordinatesFromAddress = async (addressData) => {
         // Check for non-2xx status codes (e.g., rate limit exceeded, invalid key)
         if (!response.ok) {
             console.error(`OpenCage API fetch failed with status: ${response.status}`);
-            console.log(response)
             return null;
         }
 

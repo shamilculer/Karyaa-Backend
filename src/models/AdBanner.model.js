@@ -109,7 +109,6 @@ const bannerSchema = mongoose.Schema(
 bannerSchema.index({ status: 1, placement: 1 });
 bannerSchema.index({ activeFrom: 1, activeUntil: 1 }); // Index for time-based queries
 
-
 bannerSchema.pre('save', function (next) {
     if (this.placement.length === 0) {
         return next(new Error('At least one placement location is required.'));
@@ -146,7 +145,6 @@ bannerSchema.pre('save', function (next) {
 
     next();
 });
-
 
 const AdBanner = mongoose.models.AdBanner || mongoose.model("AdBanner", bannerSchema);
 

@@ -14,7 +14,6 @@ export const postReferral = async (req, res) => {
             vendors,
         } = req.body;
 
-
         if (!referrerFullname || !referrerEmail || !referrerPhone || !vendors || vendors.length === 0) {
             return res.status(400).json({
                 success: false,
@@ -228,7 +227,6 @@ export const updateReferralStatus = async (req, res) => {
         });
     }
 };
-
 
 export const deleteReferrals = async (req, res) => {
     if (!req.user || req.user.role !== "admin") {

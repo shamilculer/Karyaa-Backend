@@ -112,7 +112,6 @@ bundleSchema.methods.getAvailableSlots = function () {
   return Math.max(0, this.maxVendors - this.subscribersCount);
 };
 
-
 bundleSchema.pre("save", function (next) {
   try {
 

@@ -22,13 +22,11 @@ const router = express.Router();
 router.post('/auth/register', registerVendor);
 router.post('/auth/login', loginVendor);
 
-
 // -------------------------------------------------------------------
 // --- COMPARE VENDOR ROUTES (Must be BEFORE dynamic /:identifier) ---
 // -------------------------------------------------------------------
 router.get('/options', getVendorOptions);
 router.get('/compare', getVendorsForComparison);
-
 
 router.get("/profile", verifyVendor, getVendorProfileForEdit)
 router.put("/password/update", verifyVendor, updateVendorPassword)
@@ -43,7 +41,6 @@ router.get('/review-stats/:vendorId', getVendorReviewStats);
 // IMPORTANT: This dynamic route MUST be LAST
 // Otherwise it will catch /options and /compare as identifiers
 router.get('/:identifier', getSingleVendor);
-
 
 router.get("/cities", getVendorCities)
 

@@ -30,7 +30,6 @@ const vendorSchema = new mongoose.Schema({
   },
 }, { _id: false }); // Vendors are embedded documents, often don't need their own MongoDB ID
 
-
 // --- Main Referral Schema ---
 const referralSchema = new mongoose.Schema(
     {
@@ -100,7 +99,6 @@ referralSchema.pre('save', async function(next) {
     
     next();
 });
-
 
 // Create the Mongoose Model
 const Referral = mongoose.model("Referral", referralSchema);

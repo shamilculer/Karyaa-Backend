@@ -35,7 +35,6 @@ const galleryItemSchema = new mongoose.Schema(
 // Helpful compound index for global feed
 galleryItemSchema.index({ createdAt: -1 });
 
-
 const GalleryItem = mongoose.models.GalleryItem || mongoose.model("GalleryItem", galleryItemSchema);
 
 export default GalleryItem;

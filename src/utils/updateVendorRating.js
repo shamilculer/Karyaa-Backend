@@ -37,9 +37,6 @@ export const updateVendorRating = async (vendorId) => {
             }, 
             { new: true }
         );
-        
-        console.log(`✅ Updated vendor ${vendorId} rating to ${averageRating}`);
-        
     } catch (err) {
         console.error("Error updating vendor rating:", err);
     }

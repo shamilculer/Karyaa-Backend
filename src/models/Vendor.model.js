@@ -393,7 +393,6 @@ async function incCategoryCounts({ mainIds = [], subIds = [], bundleId = null, i
     }
 }
 
-
 async function adjustCountsForChange(prev = null, next = null) {
     const prevStatus = prev?.vendorStatus || null;
     const nextStatus = next?.vendorStatus || null;
@@ -684,8 +683,6 @@ vendorSchema.methods.getAllFeatures = async function () {
 
     return [...(bundle.features || []), ...(this.customFeatures || [])];
 };
-
-
 
 const Vendor = mongoose.model("Vendor", vendorSchema);
 

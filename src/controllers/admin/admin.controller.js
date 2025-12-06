@@ -58,7 +58,6 @@ export const loginAdmin = async (req, res) => {
     }
 }
 
-
 export const getAllAdmins = async (req, res) => {
 
     try {
@@ -208,7 +207,6 @@ export const getAllAdmins = async (req, res) => {
     }
 };
 
-
 export const createAdmin = async (req, res) => {
 
     if (!req.user || req.user.role !== "admin") {
@@ -271,7 +269,6 @@ export const createAdmin = async (req, res) => {
                         adminSettings: true,
                     }),
         };
-
 
         const newAdmin = new Admin(adminData);
         const createdAdmin = await newAdmin.save();
@@ -406,7 +403,6 @@ export const deleteAdmin = async (req, res) => {
             });
         }
 
-
         await Admin.findByIdAndDelete(adminIdToDelete);
 
         return res.status(200).json({
@@ -422,7 +418,6 @@ export const deleteAdmin = async (req, res) => {
         });
     }
 };
-
 
 export const updateAdminAccessControl = async (req, res) => {
     if (!req.user || req.user.role !== "admin") {
@@ -480,7 +475,6 @@ export const updateAdminAccessControl = async (req, res) => {
                 message: "Permissions for Super Admin accounts cannot be manually overridden. Use adminLevel change instead.",
             });
         }
-
 
         // 7. Update the accessControl field
         const updatedAdmin = await Admin.findByIdAndUpdate(

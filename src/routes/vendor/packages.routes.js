@@ -9,5 +9,4 @@ router.get("/:vendorId", getVendorPackages);
 router.put("/update", verifyVendor, updatePackage);
 router.delete("/delete", verifyVendor, deletePackage)
 
-
 export default router

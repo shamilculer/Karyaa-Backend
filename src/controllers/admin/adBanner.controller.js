@@ -14,7 +14,6 @@ const sendError = (res, error, status = 500) => {
 };
 // ---------------------------------------------------------------------------------
 
-
 /**
  * @route POST /api/admin/banners
  * @desc Create a new Ad Banner

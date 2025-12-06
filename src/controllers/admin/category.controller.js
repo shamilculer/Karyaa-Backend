@@ -3,7 +3,6 @@ import SubCategory from "../../models/SubCategory.model.js";
 import Vendor from "../../models/Vendor.model.js";
 import mongoose from "mongoose";
 
-
 export const getCategories = async (req, res) => {
   try {
     const categories = await Category.aggregate([

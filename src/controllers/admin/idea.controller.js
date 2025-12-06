@@ -133,7 +133,6 @@ export const deleteIdea = async (req, res) => {
   }
 };
 
-
 export const updateIdeaCategory = async (req, res) => {
   try {
 
@@ -179,7 +178,6 @@ export const updateIdeaCategory = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error during update." });
   }
 };
-
 
 export const createIdeaCategory = async (req, res) => {
   try {

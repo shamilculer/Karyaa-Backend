@@ -97,7 +97,6 @@ export const deleteS3Object = async (key) => {
             Bucket: bucketName,
             Key: key,
         }));
-        console.log(`Successfully deleted S3 object: ${key}`);
     } catch (error) {
         console.error(`Error deleting S3 object (${key}):`, error);
         // We might not want to throw here to avoid blocking the main operation

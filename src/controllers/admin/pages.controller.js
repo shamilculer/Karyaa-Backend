@@ -221,8 +221,6 @@ export const deleteContent = async (req, res) => {
     }
 };
 
-
-
 /**
  * @desc Get published landing page (Public)
  * @route GET /api/content/landing-page

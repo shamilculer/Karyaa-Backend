@@ -19,7 +19,6 @@ export const createPackage = async (req, res) => {
             priceStartingFrom,
         } = req.body;
 
-
         if (!coverImage) console.log(coverImage)
         if (!services) console.log(services?.length)
         if (!name) console.log(name)
@@ -56,7 +55,6 @@ export const createPackage = async (req, res) => {
                 message: "Limit reached: Vendors can create maximum 9 packages",
             });
         }
-
 
         const duplicate = await Package.findOne({
             vendor: vendorId,
@@ -96,7 +94,6 @@ export const createPackage = async (req, res) => {
         });
     }
 };
-
 
 export const getVendorPackages = async (req, res) => {
     try {
@@ -230,7 +227,6 @@ export const updatePackage = async (req, res) => {
         });
     }
 };
-
 
 export const deletePackage = async (req, res) => {
     try {

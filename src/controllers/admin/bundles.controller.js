@@ -66,7 +66,6 @@ export const sendBundleEnquiry = async (req, res) => {
 
     //add mailing service here.
 
-
     res.status(200).json({
       success: true,
       message: "Bundle enquiry recorded successfully. We will reach out to you shortly.",
