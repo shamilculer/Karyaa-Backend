@@ -6,7 +6,8 @@ import Category from "../models/Category.model.js";
 import mongoose from "mongoose";
 import { getCoordinatesFromAddress } from "../utils/fetchCordinates.js";
 import GalleryItem from "../models/GalleryItem.model.js";
-import bcrypt from "bcrypt"
+import bcrypt from "bcrypt";
+import { sendEmail, prepareVendorData } from "../services/email.service.js";
 
 // -------------------------------------------------------------------
 // --- Vendor Registration (POST /api/vendors/register) ---
@@ -239,7 +240,7 @@ export const registerVendor = async (req, res) => {
           const oldKey = getKeyFromUrl(url);
           if (oldKey) {
             const fileName = oldKey.split('/').pop();
-            const newKey = `vendors/${newVendor.slug}/${fileName}`;
+            const newKey = `vendors/${newVendor.slug}/documents/${fileName}`;
 
             try {
               const newUrl = await moveS3Object(oldKey, newKey);
@@ -261,6 +262,29 @@ export const registerVendor = async (req, res) => {
     } catch (err) {
       console.error("Error moving files to permanent storage:", err);
       // We don't fail the request if moving fails, but we should probably alert admin or log it.
+    }
+
+    // --- SEND EMAIL NOTIFICATIONS ---
+    try {
+      const vendorData = prepareVendorData(newVendor);
+
+      // Send confirmation email to vendor
+      await sendEmail({
+        to: newVendor.email,
+        template: 'vendor-registration',
+        data: vendorData,
+      });
+
+      // Send alert email to vendor@ (recipientOverride in template config)
+      await sendEmail({
+        template: 'admin-vendor-alert',
+        data: vendorData,
+      });
+
+      console.log('✅ Registration emails sent successfully');
+    } catch (emailError) {
+      // Log error but don't fail the registration
+      console.error("Error sending registration emails:", emailError);
     }
 
     res.status(201).json({

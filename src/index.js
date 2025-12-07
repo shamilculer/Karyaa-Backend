@@ -26,6 +26,7 @@ import referralRoutes from "./routes/user/referral.routes.js"
 import contentRoutes from "./routes/public/pages.routes.js"
 import analyticsRoutes from "./routes/vendor/analytics.routes.js"
 import seoRoutes from "./routes/admin/seo.routes.js"
+import testEmailRoutes from "./routes/test/email.test.routes.js"
 
 
 
@@ -80,6 +81,8 @@ app.use("/api/v1/referrals", referralRoutes);
 app.use("/api/v1/content", contentRoutes);
 app.use("/api/v1/analytics", analyticsRoutes);
 
+// Test routes (remove in production)
+app.use('/api/v1/test', testEmailRoutes);
 
 app.use('/api/v1/admin', adminRoutes)
 app.use('/api/v1/admin/analytics/bundles', bundleStatsRoute)

@@ -3,6 +3,7 @@ import GalleryItem from "../../models/GalleryItem.model.js";
 import Package from "../../models/Package.model.js";
 import Bundle from "../../models/Bundle.model.js";
 import mongoose from "mongoose";
+import { sendEmail, prepareVendorData } from "../../services/email.service.js";
 
 // Get all vendors with pagination and filters (for admin table)
 export const getAllVendors = async (req, res) => {
@@ -367,6 +368,46 @@ export const updateVendorStatus = async (req, res) => {
 
     const allFeatures = await vendor.getAllFeatures();
     const subscriptionDuration = await vendor.getTotalSubscriptionDuration();
+
+    // --- SEND EMAIL NOTIFICATIONS BASED ON STATUS CHANGE ---
+    try {
+      const previousStatus = currentVendor.vendorStatus;
+      const newStatus = vendor.vendorStatus;
+      const vendorData = prepareVendorData(vendor);
+
+      // Send approval email when status changes to approved
+      if (newStatus === 'approved' && previousStatus !== 'approved') {
+        await sendEmail({
+          to: vendor.email,
+          template: 'vendor-approval',
+          data: vendorData,
+        });
+        console.log(`✅ Approval email sent to ${vendor.email}`);
+      }
+
+      // Send rejection email when status changes to rejected
+      if (newStatus === 'rejected' && previousStatus !== 'rejected') {
+        await sendEmail({
+          to: vendor.email,
+          template: 'vendor-rejection',
+          data: vendorData,
+        });
+        console.log(`✅ Rejection email sent to ${vendor.email}`);
+      }
+
+      // Send expiration email when status changes to expired
+      if (newStatus === 'expired' && previousStatus !== 'expired') {
+        await sendEmail({
+          to: vendor.email,
+          template: 'vendor-expired',
+          data: vendorData,
+        });
+        console.log(`✅ Expiration email sent to ${vendor.email}`);
+      }
+    } catch (emailError) {
+      // Log error but don't fail the status update
+      console.error("Error sending status update email:", emailError);
+    }
 
     res.status(200).json({
       success: true,

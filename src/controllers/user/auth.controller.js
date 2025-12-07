@@ -1,6 +1,7 @@
 import User from "../../models/User.model.js";
 import { generateTokens } from "../../utils/index.js";
 import bcrypt from "bcrypt";
+import { sendEmail } from "../../services/email.service.js";
 
 // -------------------------
 // @desc    Register new user
@@ -46,13 +47,29 @@ export const createUser = async (req, res) => {
         // ✅ 4. Generate tokens
         const { accessToken, refreshToken } = generateTokens(newUser);
 
-        // ✅ 5. Remove sensitive fields
+        // ✅ 5. Send welcome email
+        try {
+            await sendEmail({
+                to: emailAddress,
+                template: 'client-welcome',
+                data: {
+                    name: username,
+                    email: emailAddress,
+                },
+            });
+            console.log(`✅ Welcome email sent to ${emailAddress}`);
+        } catch (emailError) {
+            // Log error but don't fail registration
+            console.error("Error sending welcome email:", emailError);
+        }
+
+        // ✅ 6. Remove sensitive fields
         const userResponse = newUser.toObject();
         delete userResponse.password;
         delete userResponse.passwordChangedAt;
         delete userResponse.savedVendors;
 
-        // ✅ 6. Success response
+        // ✅ 7. Success response
         return res.status(201).json({
             success: true,
             message: "User registered successfully",
