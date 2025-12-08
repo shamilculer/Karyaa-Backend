@@ -128,13 +128,14 @@ bannerSchema.pre('save', function (next) {
 
     if (this.isVendorSpecific) {
         if (!this.vendor) {
-            return next(new Error('Vendor ID is required for vendor-specific banners.'));
+            return next(new Error('Vendor is required for vendor-specific banners.'));
         }
         this.customUrl = undefined;
     } else {
-        if (!this.customUrl || this.customUrl.trim() === '') {
-            return next(new Error('Custom URL is required for non-vendor-specific banners.'));
-        }
+        // Custom URL is now optional
+        // if (!this.customUrl || this.customUrl.trim() === '') {
+        //    return next(new Error('Custom URL is required for non-vendor-specific banners.'));
+        // }
         this.vendor = undefined;
     }
 
