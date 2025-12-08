@@ -20,11 +20,11 @@ export const requestVendorPasswordReset = async (req, res) => {
     try {
         const vendor = await Vendor.findOne({ email });
 
-        // Don't reveal if vendor exists for security
+        // Check if vendor exists
         if (!vendor) {
-            return res.status(200).json({
-                success: true,
-                message: "If an account exists with this email, a password reset link has been sent",
+            return res.status(404).json({
+                success: false,
+                message: "No vendor account found with this email address.",
             });
         }
 
@@ -72,7 +72,7 @@ export const requestVendorPasswordReset = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: "If an account exists with this email, a password reset link has been sent",
+            message: "Password reset link has been sent to your email.",
         });
     } catch (error) {
         console.error("Vendor password reset request error:", error);
