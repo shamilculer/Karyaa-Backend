@@ -15,6 +15,7 @@ export const getAllVendors = async (req, res) => {
       vendorStatus = "",
       city = "",
       isInternational = "",
+      isRecommended = "",
       expiryStatus = "",
       sortBy = "createdAt",
       sortOrder = "desc",
@@ -27,6 +28,7 @@ export const getAllVendors = async (req, res) => {
     if (vendorStatus) matchQuery.vendorStatus = vendorStatus;
     if (city) matchQuery["address.city"] = city;
     if (isInternational !== "") matchQuery.isInternational = isInternational === "true";
+    if (isRecommended !== "") matchQuery.isRecommended = isRecommended === "true";
 
     // Filter by expiry status
     if (expiryStatus) {
