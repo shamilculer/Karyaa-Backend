@@ -11,7 +11,7 @@ const bannerSchema = mongoose.Schema(
         },
         imageUrl: {
             type: String,
-            required: [true, 'Banner image URL is required.'],
+            // Not required - optional for video banners (used as poster)
         },
         mobileImageUrl: {
             type: String, // Optional mobile version

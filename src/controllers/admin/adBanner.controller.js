@@ -46,10 +46,8 @@ export const createBanner = async (req, res) => {
             return sendError(res, { message: "Name and placement are required." }, 400);
         }
 
-        if (isVendorSpecific) {
-            if (!vendor) {
-                return sendError(res, { message: "Vendor required." }, 400);
-            }
+        // Validate vendor if provided and isVendorSpecific is true
+        if (isVendorSpecific && vendor) {
             if (!mongoose.Types.ObjectId.isValid(vendor)) {
                 return sendError(res, { message: "Invalid Vendor ID." }, 400);
             }
@@ -57,11 +55,10 @@ export const createBanner = async (req, res) => {
             if (!existing) {
                 return sendError(res, { message: "Vendor not found." }, 404);
             }
-        } else {
-            if (!customUrl) {
-                return sendError(res, { message: "Custom URL required." }, 400);
-            }
         }
+
+        // Vendor and Custom URL are now optional - no validation required
+
 
         const banner = new AdBanner({
             name,
