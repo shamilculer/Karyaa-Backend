@@ -20,7 +20,7 @@ const ticketSchema = new mongoose.Schema({
         default: 'medium',
         required: [true, 'A priority level is required.']
     },
-    
+
     description: {
         type: String,
         required: [true, 'A detailed description is required.'],
@@ -32,9 +32,9 @@ const ticketSchema = new mongoose.Schema({
         trim: true,
         lowercase: true,
         validate: {
-            validator: function(v) {
+            validator: function (v) {
                 // Allows empty string but checks format if value is present
-                if (v === '') return true; 
+                if (v === '') return true;
                 return /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(v);
             },
             message: props => `${props.value} is not a valid email address!`
@@ -45,6 +45,13 @@ const ticketSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Vendor',
         required: false, // Set to true if submission requires authentication
+    },
+
+    // Unique reference ID for the ticket
+    referenceId: {
+        type: String,
+        unique: true,
+        trim: true,
     },
 
     // Status tracking for the support team
@@ -65,8 +72,15 @@ const ticketSchema = new mongoose.Schema({
     }
 });
 
-// Update the updatedAt field before saving
-ticketSchema.pre('save', function(next) {
+// Generate unique reference ID before saving
+ticketSchema.pre('save', function (next) {
+    if (!this.referenceId) {
+        // Generate reference ID: TKT-YYYYMMDD-XXXXX (e.g., TKT-20231215-A1B2C)
+        const date = new Date();
+        const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+        const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
+        this.referenceId = `TKT-${dateStr}-${randomStr}`;
+    }
     this.updatedAt = Date.now();
     next();
 });

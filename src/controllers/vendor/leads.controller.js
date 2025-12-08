@@ -1,5 +1,7 @@
 import Lead from "../../models/Lead.model.js";
+import Vendor from "../../models/Vendor.model.js";
 import mongoose from "mongoose";
+import { sendEmail } from "../../services/email.service.js";
 
 export const postLead = async (req, res) => {
     try {
@@ -24,6 +26,15 @@ export const postLead = async (req, res) => {
             })
         }
 
+        // Get vendor details for email
+        const vendor = await Vendor.findById(vendorId).select("businessName email");
+        if (!vendor) {
+            return res.status(404).json({
+                success: false,
+                message: "Vendor not found.",
+            });
+        }
+
         const newLead = await Lead.create({
             vendor: vendorId,
             fullName,
@@ -36,6 +47,42 @@ export const postLead = async (req, res) => {
             message,
             user: user || null,
         })
+
+        // Send email notifications
+        try {
+            const emailData = {
+                referenceId: newLead.referenceId,
+                fullName,
+                phoneNumber,
+                email,
+                location,
+                eventType,
+                eventDate,
+                numberOfGuests,
+                message,
+                vendorName: vendor.businessName,
+                vendorEmail: vendor.email,
+            };
+
+            // Send notification to vendor
+            console.log(`📧 Sending lead notification to vendor: ${vendor.email}`);
+            await sendEmail({
+                to: vendor.email,
+                template: 'vendor-lead',
+                data: emailData,
+            });
+
+            // Send alert to admin
+            await sendEmail({
+                template: 'admin-lead-alert',
+                data: emailData,
+            });
+
+            console.log(`✅ Lead emails sent for ${newLead.referenceId}`);
+        } catch (emailError) {
+            // Log error but don't fail lead creation
+            console.error("Error sending lead emails:", emailError);
+        }
 
         return res.status(201).json({
             success: true,

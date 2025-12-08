@@ -1,4 +1,5 @@
 import Referral from "../../models/Referral.model.js";
+import { sendEmail } from "../../services/email.service.js";
 
 /**
  * @description Creates a new business referral and saves it to the database.
@@ -38,6 +39,36 @@ export const postReferral = async (req, res) => {
         });
 
         await newReferral.save();
+
+        // --- SEND EMAIL NOTIFICATIONS ---
+        try {
+            const emailData = {
+                referrerName: referrerFullname,
+                referrerEmail,
+                referrerPhone,
+                referralCode: newReferral.referralCode,
+                vendorCount: vendors.length,
+                vendors: vendors,
+            };
+
+            // Send confirmation email to referrer
+            await sendEmail({
+                to: referrerEmail,
+                template: 'referral-confirmation',
+                data: emailData,
+            });
+
+            // Send alert email to admin (vendor@karyaa.ae)
+            await sendEmail({
+                template: 'admin-referral-alert',
+                data: emailData,
+            });
+
+            console.log('✅ Referral emails sent successfully');
+        } catch (emailError) {
+            // Log error but don't fail the referral submission
+            console.error("Error sending referral emails:", emailError);
+        }
 
         res.status(201).json({
             success: true,
@@ -205,7 +236,7 @@ export const updateReferralStatus = async (req, res) => {
             });
         }
 
-        const message = ids.length === 1 
+        const message = ids.length === 1
             ? `Successfully updated referral to '${status}'.`
             : `Successfully updated ${result.modifiedCount} referral(s) to '${status}'.`;
 
@@ -280,7 +311,7 @@ export const deleteReferrals = async (req, res) => {
             });
         }
 
-        const message = ids.length === 1 
+        const message = ids.length === 1
             ? "Successfully deleted referral."
             : `Successfully deleted ${result.deletedCount} referral(s).`;
 

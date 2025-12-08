@@ -466,8 +466,8 @@ export const updateVendorDuration = async (req, res) => {
         message: "Vendor not found",
       });
     }
-    // Recalculate subscription end date if vendor is approved
-    if (vendor.vendorStatus === "approved" && vendor.subscriptionStartDate) {
+    // Recalculate subscription end date if vendor has a subscription start date
+    if (vendor.subscriptionStartDate) {
       const duration = await vendor.getTotalSubscriptionDuration();
 
       if (duration) {

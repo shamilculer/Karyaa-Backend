@@ -10,15 +10,15 @@
  * @returns {string} Rendered template
  */
 export const renderTemplate = (template, data) => {
-    let rendered = template;
+  let rendered = template;
 
-    // Replace all {{variable}} placeholders
-    Object.keys(data).forEach((key) => {
-        const regex = new RegExp(`{{${key}}}`, 'g');
-        rendered = rendered.replace(regex, data[key] || '');
-    });
+  // Replace all {{variable}} placeholders
+  Object.keys(data).forEach((key) => {
+    const regex = new RegExp(`{{${key}}}`, 'g');
+    rendered = rendered.replace(regex, data[key] || '');
+  });
 
-    return rendered;
+  return rendered;
 };
 
 /**
@@ -44,7 +44,7 @@ export const getEmailStyles = () => `
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     .email-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #1B2648;
       color: #ffffff;
       padding: 30px 20px;
       text-align: center;
@@ -58,7 +58,7 @@ export const getEmailStyles = () => `
       padding: 30px 20px;
     }
     .email-body h2 {
-      color: #333;
+      color: #1B2648;
       font-size: 22px;
       margin-top: 0;
     }
@@ -69,7 +69,7 @@ export const getEmailStyles = () => `
     .button {
       display: inline-block;
       padding: 12px 30px;
-      background: #667eea;
+      background: #1B2648;
       color: #ffffff !important;
       text-decoration: none;
       border-radius: 5px;
@@ -77,17 +77,17 @@ export const getEmailStyles = () => `
       font-weight: 600;
     }
     .button:hover {
-      background: #5568d3;
+      background: #D4AF37;
     }
     .info-box {
       background: #f8f9fa;
-      border-left: 4px solid #667eea;
+      border-left: 4px solid #1B2648;
       padding: 15px;
       margin: 20px 0;
     }
     .warning-box {
       background: #fff3cd;
-      border-left: 4px solid #ffc107;
+      border-left: 4px solid #D4AF37;
       padding: 15px;
       margin: 20px 0;
     }
@@ -106,7 +106,7 @@ export const getEmailStyles = () => `
       border-top: 1px solid #e9ecef;
     }
     .email-footer a {
-      color: #667eea;
+      color: #1B2648;
       text-decoration: none;
     }
     ul {
@@ -134,10 +134,10 @@ export const getEmailHeader = (title) => `
  * @returns {string} Footer HTML
  */
 export const getEmailFooter = () => {
-    const currentYear = new Date().getFullYear();
-    const frontendUrl = process.env.FRONTEND_URL || 'https://karyaa.ae';
+  const currentYear = new Date().getFullYear();
+  const frontendUrl = process.env.FRONTEND_URL || 'https://karyaa.ae';
 
-    return `
+  return `
     <div class="email-footer">
       <p>
         <strong>Karyaa</strong> - Your Event Planning Marketplace

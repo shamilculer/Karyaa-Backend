@@ -1,5 +1,6 @@
 import Ticket from "../../models/Ticket.model.js";
 import Vendor from "../../models/Vendor.model.js";
+import { sendEmail } from "../../services/email.service.js";
 
 /**
  * @route   POST /support-tickets
@@ -20,10 +21,15 @@ export const createTicket = async (req, res) => {
 
     // If vendor is authenticated (via middleware)
     let submittedBy = null;
+    let vendorData = null;
     if (req.user && req.user.role === "vendor") {
-      const vendor = await Vendor.findById(req.user.id).select("_id email");
+      const vendor = await Vendor.findById(req.user.id).select("_id email businessName");
       if (vendor) {
         submittedBy = vendor._id;
+        vendorData = {
+          vendorName: vendor.businessName,
+          vendorEmail: vendor.email,
+        };
       }
     }
 
@@ -35,6 +41,28 @@ export const createTicket = async (req, res) => {
       contactEmail: contactEmail || "",
       submittedBy,
     });
+
+    // Send email notification to support
+    try {
+      await sendEmail({
+        template: 'support-ticket',
+        data: {
+          ticketId: ticket._id,
+          referenceId: ticket.referenceId,
+          subject,
+          category,
+          priority,
+          description,
+          contactEmail,
+          ...vendorData,
+        },
+      });
+
+      console.log(`✅ Support ticket email sent for ${ticket.referenceId}`);
+    } catch (emailError) {
+      // Log error but don't fail ticket creation
+      console.error("Error sending support ticket email:", emailError);
+    }
 
     return res.status(201).json({
       success: true,

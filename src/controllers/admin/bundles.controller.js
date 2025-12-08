@@ -1,5 +1,6 @@
 import Bundle from "../../models/Bundle.model.js";
 import Vendor from "../../models/Vendor.model.js";
+import { sendEmail } from "../../services/email.service.js";
 
 export const getBundlesForRegistration = async (req, res) => {
   try {
@@ -64,7 +65,46 @@ export const sendBundleEnquiry = async (req, res) => {
       });
     }
 
-    //add mailing service here.
+    // Get bundle details
+    const bundle = await Bundle.findById(bundleId).select("name price features");
+
+    if (!bundle) {
+      return res.status(404).json({
+        success: false,
+        message: "Bundle not found.",
+      });
+    }
+
+    // Send email notifications
+    try {
+      const emailData = {
+        vendorId: vendor._id,
+        vendorName: vendor.businessName,
+        vendorEmail: vendor.email,
+        vendorPhone: vendor.phoneNumber,
+        bundleName: bundle.name,
+        bundlePrice: bundle.price,
+        bundleFeatures: bundle.features,
+      };
+
+      // Send confirmation email to vendor
+      await sendEmail({
+        to: vendor.email,
+        template: 'bundle-enquiry',
+        data: emailData,
+      });
+
+      // Send alert to admin
+      await sendEmail({
+        template: 'admin-bundle-enquiry-alert',
+        data: emailData,
+      });
+
+      console.log(`✅ Bundle enquiry emails sent for ${vendor.businessName} - ${bundle.name}`);
+    } catch (emailError) {
+      console.error("Error sending bundle enquiry emails:", emailError);
+      // Don't fail the request if email fails
+    }
 
     res.status(200).json({
       success: true,

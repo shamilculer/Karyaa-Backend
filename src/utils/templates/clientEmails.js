@@ -5,10 +5,10 @@ import { getEmailHeader, getEmailFooter, wrapEmailContent } from '../emailHelper
  * Sent to client when they sign up
  */
 export const clientWelcomeTemplate = (data) => {
-    const { name, email } = data;
-    const frontendUrl = process.env.FRONTEND_URL || 'https://karyaa.ae';
+  const { name, email } = data;
+  const frontendUrl = process.env.CLIENT_URL || 'https://karyaa.ae';
 
-    const content = `
+  const content = `
     ${getEmailHeader('Welcome to Karyaa!')}
     <div class="email-body">
       <h2>Hello ${name}! 👋</h2>
@@ -45,5 +45,5 @@ export const clientWelcomeTemplate = (data) => {
     ${getEmailFooter()}
   `;
 
-    return wrapEmailContent(content);
+  return wrapEmailContent(content);
 };

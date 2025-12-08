@@ -80,7 +80,7 @@ const vendorSchema = mongoose.Schema(
                 return this.isInternational;
             },
         },
-        
+
         // Additional Documents Section
         additionalDocuments: [
             {
@@ -179,21 +179,21 @@ const vendorSchema = mongoose.Schema(
         occasionsServed: {
             type: [String],
             enum: [
-              "wedding",
-              "engagement",
-              "proposal",
-              "baby-shower",
-              "gender-reveal",
-              "birthday",
-              "graduation",
-              "corporate-event",
-              "brand-launch",
-              "festivities",
-              "anniversary",
+                "wedding",
+                "engagement",
+                "proposal",
+                "baby-shower",
+                "gender-reveal",
+                "birthday",
+                "graduation",
+                "corporate-event",
+                "brand-launch",
+                "festivities",
+                "anniversary",
             ],
             default: [],
             index: true,
-          },
+        },
 
         // Bundle & Subscription Fields
         selectedBundle: {
@@ -335,12 +335,16 @@ const vendorSchema = mongoose.Schema(
             type: String,
             enum: ["pending", "approved", "rejected", "expired"],
             default: "pending",
+            // Note: Vendors are automatically set to "expired" by a daily cron job when subscriptionEndDate passes
         },
         role: {
             type: String,
             enum: ["user", "vendor", "admin"],
             default: "vendor",
         },
+        // Password Reset Fields
+        passwordResetToken: String,
+        passwordResetExpires: Date,
     },
     {
         timestamps: true,
@@ -349,7 +353,7 @@ const vendorSchema = mongoose.Schema(
     }
 );
 
-vendorSchema.virtual('formattedRating').get(function() {
+vendorSchema.virtual('formattedRating').get(function () {
     return parseFloat(this.averageRating || 0).toFixed(1);
 });
 
@@ -484,18 +488,18 @@ vendorSchema.pre("save", async function (next) {
 
         // 2. Reference ID Generation
         if (!this.referenceId && this.isNew) {
-             const generateRefId = () => {
+            const generateRefId = () => {
                 const random = Math.floor(100000 + Math.random() * 900000); // 6 digit number
                 return `KAR${random}`;
-             };
-             
-             let refId = generateRefId();
-             if (mongoose.models.Vendor) {
+            };
+
+            let refId = generateRefId();
+            if (mongoose.models.Vendor) {
                 while (await mongoose.models.Vendor.findOne({ referenceId: refId })) {
                     refId = generateRefId();
                 }
-             }
-             this.referenceId = refId;
+            }
+            this.referenceId = refId;
         }
 
         // 3. Slug Generation

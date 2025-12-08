@@ -6,6 +6,10 @@ import {
     fetchUserSession
 } from "../controllers/user/auth.controller.js";
 import {
+    requestPasswordReset,
+    resetPassword
+} from "../controllers/user/passwordReset.controller.js";
+import {
     getSavedVendors,
     toggleSavedVendor
 } from "../controllers/user/savedVendors.controller.js";
@@ -29,5 +33,9 @@ router.get("/profile", verifyToken, getUserProfile);
 router.patch("/profile", verifyToken, updateUserProfile);
 router.patch("/profile/change-password", verifyToken, changePassword);
 router.delete("/profile", verifyToken, deleteUserAccount);
+
+// Password Reset Routes
+router.post('/auth/forgot-password', requestPasswordReset);
+router.post('/auth/reset-password', resetPassword);
 
 export default router

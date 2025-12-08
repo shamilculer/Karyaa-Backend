@@ -7,6 +7,25 @@ import {
     adminVendorAlertTemplate,
 } from '../utils/templates/vendorEmails.js';
 import { clientWelcomeTemplate } from '../utils/templates/clientEmails.js';
+import {
+    referralConfirmationTemplate,
+    adminReferralAlertTemplate
+} from '../utils/templates/referralEmails.js';
+import { contactFormTemplate } from '../utils/templates/contactEmails.js';
+import {
+    supportTicketTemplate,
+    vendorLeadNotificationTemplate,
+    adminLeadAlertTemplate
+} from '../utils/templates/ticketLeadEmails.js';
+import {
+    newsletterConfirmationTemplate,
+    adminNewsletterAlertTemplate
+} from '../utils/templates/newsletterEmails.js';
+import {
+    bundleEnquiryTemplate,
+    adminBundleEnquiryAlertTemplate
+} from '../utils/templates/bundleEmails.js';
+import { passwordResetTemplate } from '../utils/templates/passwordResetEmail.js';
 
 /**
  * Email Service
@@ -46,6 +65,67 @@ const EMAIL_TEMPLATES = {
         subject: 'Welcome to Karyaa! 🎉',
         senderType: 'noreply',
     },
+    'referral-confirmation': {
+        template: referralConfirmationTemplate,
+        subject: 'Thank You for Your Referral!',
+        senderType: 'noreply',
+    },
+    'admin-referral-alert': {
+        template: adminReferralAlertTemplate,
+        subject: (data) => `New Vendor Referral - ${data.vendorCount} Vendor(s) from ${data.referrerName}`,
+        senderType: 'noreply',
+        recipientOverride: () => process.env.EMAIL_VENDOR || 'vendor@karyaa.ae',
+    },
+    'contact-form': {
+        template: contactFormTemplate,
+        subject: (data) => `Contact Form: ${data.subject || 'New Message from ' + data.name}`,
+        senderType: 'noreply',
+        recipientOverride: () => process.env.EMAIL_SUPPORT || 'support@karyaa.ae',
+    },
+    'support-ticket': {
+        template: supportTicketTemplate,
+        subject: (data) => `New Support Ticket [${data.priority}]: ${data.subject}`,
+        senderType: 'noreply',
+        recipientOverride: () => process.env.EMAIL_SUPPORT || 'support@karyaa.ae',
+    },
+    'vendor-lead': {
+        template: vendorLeadNotificationTemplate,
+        subject: (data) => `New Lead Received - ${data.referenceId}`,
+        senderType: 'noreply',
+    },
+    'admin-lead-alert': {
+        template: adminLeadAlertTemplate,
+        subject: (data) => `New Lead: ${data.vendorName} - ${data.referenceId}`,
+        senderType: 'noreply',
+        recipientOverride: () => process.env.EMAIL_VENDOR || 'vendor@karyaa.ae',
+    },
+    'newsletter-confirmation': {
+        template: newsletterConfirmationTemplate,
+        subject: 'Welcome to Karyaa Newsletter! 📧',
+        senderType: 'newsletter', // Send from newsletter@karyaa.ae
+    },
+    'admin-newsletter-alert': {
+        template: adminNewsletterAlertTemplate,
+        subject: (data) => `New Newsletter Subscription: ${data.email}`,
+        senderType: 'noreply',
+        recipientOverride: () => process.env.EMAIL_NEWSLETTER || 'newsletter@karyaa.ae',
+    },
+    'bundle-enquiry': {
+        template: bundleEnquiryTemplate,
+        subject: (data) => `Thank You for Your Interest in ${data.bundleName}`,
+        senderType: 'noreply',
+    },
+    'admin-bundle-enquiry-alert': {
+        template: adminBundleEnquiryAlertTemplate,
+        subject: (data) => `New Bundle Enquiry: ${data.vendorName} - ${data.bundleName}`,
+        senderType: 'noreply',
+        recipientOverride: () => process.env.EMAIL_VENDOR || 'vendors@karyaa.ae',
+    },
+    'password-reset': {
+        template: passwordResetTemplate,
+        subject: 'Reset Your Password - Karyaa',
+        senderType: 'noreply',
+    },
 };
 
 /**
@@ -66,8 +146,10 @@ export const sendEmail = async (options) => {
         return { success: false, error: 'Email service not configured' };
     }
 
+    let recipient = to; // Declare outside try block for error handling
+
     try {
-        let html, subject, senderType, recipient;
+        let html, subject, senderType;
 
         // If template name is provided, use predefined template
         if (templateName && EMAIL_TEMPLATES[templateName]) {
@@ -125,7 +207,7 @@ export const sendEmail = async (options) => {
             response: info.response,
         };
     } catch (error) {
-        console.error(`❌ Failed to send email to ${recipient || to}:`);
+        console.error(`❌ Failed to send email to ${recipient}:`);
         console.error(`   Error: ${error.message}`);
         if (error.code) console.error(`   Code: ${error.code}`);
         if (error.command) console.error(`   Command: ${error.command}`);
@@ -189,7 +271,6 @@ export const prepareVendorData = (vendor) => {
         mainCategory: vendor.mainCategory,
         subscriptionEndDate: vendor.subscriptionEndDate,
         dashboardUrl: `${frontendUrl}/vendor/dashboard`,
-        renewalUrl: `${frontendUrl}/vendor/subscription`,
         reviewUrl: `${adminPanelUrl}/vendors/${vendor._id}`,
         city: vendor.address?.city,
         category: Array.isArray(vendor.mainCategory)

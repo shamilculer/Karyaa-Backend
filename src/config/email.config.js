@@ -63,6 +63,10 @@ export const getSenderConfig = (senderType = 'noreply') => {
             email: process.env.EMAIL_VENDOR || 'vendor@karyaa.ae',
             name: process.env.EMAIL_VENDOR_NAME || 'Karyaa Vendor Team',
         },
+        newsletter: {
+            email: process.env.EMAIL_NEWSLETTER || 'newsletter@karyaa.ae',
+            name: process.env.EMAIL_NEWSLETTER_NAME || 'Karyaa Newsletter',
+        },
     };
 
     return senderMap[senderType] || senderMap.noreply;

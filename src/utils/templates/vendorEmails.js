@@ -35,7 +35,7 @@ export const vendorRegistrationTemplate = (data) => {
       <h3>Need Help?</h3>
       <p>If you have any questions or need assistance, our support team is here to help!</p>
       
-      <a href="mailto:vendor@karyaa.ae" class="button">Contact Vendor Support</a>
+      <a href="mailto:vendors@karyaa.ae" class="button">Contact Vendor Support</a>
 
       <p style="margin-top: 30px; color: #666; font-size: 14px;">
         <em>Please keep your reference ID (${referenceId}) for future correspondence.</em>
@@ -199,7 +199,7 @@ export const vendorExpiredTemplate = (data) => {
  * Sent to admin when a new vendor registers
  */
 export const adminVendorAlertTemplate = (data) => {
-    const { businessName, ownerName, email, phoneNumber, referenceId, reviewUrl, city, category } = data;
+    const { businessName, ownerName, email, phoneNumber, referenceId, city, category } = data;
 
     const content = `
     ${getEmailHeader('New Vendor Registration')}
@@ -220,8 +220,6 @@ export const adminVendorAlertTemplate = (data) => {
 
       <h3>Action Required</h3>
       <p>Please review the vendor's application, verify their documents, and approve or reject their registration.</p>
-      
-      <a href="${reviewUrl}" class="button">Review Application</a>
 
       <p style="margin-top: 30px; font-size: 14px; color: #666;">
         <em>This is an automated notification from the Karyaa vendor management system.</em>

@@ -13,14 +13,22 @@ import {
     updateVendorPassword,
 } from "../controllers/vendor.controller.js";
 import { verifyVendor } from "../middleware/verifyVendor.js"
+import {
+    requestVendorPasswordReset,
+    resetVendorPassword
+} from "../controllers/vendor/passwordReset.controller.js";
 
 const router = express.Router();
 
 // -------------------------------------------------------------------
 // --- AUTH ROUTES ---
 // -------------------------------------------------------------------
+// Auth Routes
 router.post('/auth/register', registerVendor);
 router.post('/auth/login', loginVendor);
+router.post('/auth/forgot-password', requestVendorPasswordReset);
+router.post('/auth/reset-password', resetVendorPassword);
+
 
 // -------------------------------------------------------------------
 // --- COMPARE VENDOR ROUTES (Must be BEFORE dynamic /:identifier) ---
