@@ -27,7 +27,7 @@ import contentRoutes from "./routes/public/pages.routes.js"
 import analyticsRoutes from "./routes/vendor/analytics.routes.js"
 import seoRoutes from "./routes/admin/seo.routes.js"
 import testEmailRoutes from "./routes/test/email.test.routes.js"
-import testCronRoutes from "./routes/test/cron.test.routes.js"
+
 import contactRoutes from "./routes/public/contact.routes.js"
 import newsletterRoutes from "./routes/public/newsletter.routes.js"
 import { initializeCronJobs } from "./jobs/index.js";
@@ -89,7 +89,7 @@ app.use("/api/v1/newsletter", newsletterRoutes);
 
 // Test routes (remove in production)
 app.use('/api/v1/test/email', testEmailRoutes);
-app.use('/api/v1/test/cron', testCronRoutes);
+
 
 app.use('/api/v1/admin', adminRoutes)
 app.use('/api/v1/admin/analytics/bundles', bundleStatsRoute)

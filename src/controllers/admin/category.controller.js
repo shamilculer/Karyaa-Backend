@@ -251,7 +251,7 @@ export const deleteCategory = async (req, res) => {
 
 export const addSubCategory = async (req, res) => {
   try {
-    const { name, mainCategory, coverImage, metaTitle, metaDescription, metaKeywords } = req.body;
+    const { name, mainCategory, coverImage, isPopular, isNewSub, metaTitle, metaDescription, metaKeywords } = req.body;
 
     if (!name || !mainCategory || !coverImage) {
       return res.status(400).json({ success: false, message: "Missing required fields: name, mainCategory, or coverImage" });
@@ -267,6 +267,8 @@ export const addSubCategory = async (req, res) => {
       name,
       mainCategory,
       coverImage,
+      isPopular: isPopular || false,
+      isNewSub: isNewSub || false,
       metaTitle,
       metaDescription,
       metaKeywords

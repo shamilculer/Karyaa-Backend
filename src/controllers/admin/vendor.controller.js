@@ -723,41 +723,36 @@ export const updateVendorDocuments = async (req, res) => {
     }
 
     // Update the vendor
+    // Update the vendor
     const updatedVendor = await Vendor.findByIdAndUpdate(
       id,
       updateFields,
       {
         new: true,
         runValidators: true,
-        select: "businessName email isInternational tradeLicenseNumber personalEmiratesIdNumber tradeLicenseCopy emiratesIdCopy businessLicenseCopy passportOrIdCopy"
       }
-    );
+    )
+      .populate("selectedBundle")
+      .populate("mainCategory")
+      .populate("subCategories");
 
-    // Build response based on vendor type
-    const responseData = {
-      _id: updatedVendor._id,
-      businessName: updatedVendor.businessName,
-      email: updatedVendor.email,
-      isInternational: updatedVendor.isInternational,
-    };
-
-    if (!updatedVendor.isInternational) {
-      responseData.documents = {
-        tradeLicenseNumber: updatedVendor.tradeLicenseNumber || null,
-        personalEmiratesIdNumber: updatedVendor.personalEmiratesIdNumber || null,
-        tradeLicenseCopy: updatedVendor.tradeLicenseCopy || null,
-        emiratesIdCopy: updatedVendor.emiratesIdCopy || null,
-      };
-    } else {
-      responseData.documents = {
-        businessLicenseCopy: updatedVendor.businessLicenseCopy || null,
-        passportOrIdCopy: updatedVendor.passportOrIdCopy || null,
-      };
+    if (!updatedVendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found after update",
+      });
     }
+
+    const allFeatures = await updatedVendor.getAllFeatures();
+    const subscriptionDuration = await updatedVendor.getTotalSubscriptionDuration();
 
     res.status(200).json({
       success: true,
-      data: responseData,
+      data: {
+        ...updatedVendor.toObject(),
+        allFeatures,
+        subscriptionDuration,
+      },
       message: "Vendor documents updated successfully",
     });
   } catch (error) {

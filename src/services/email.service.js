@@ -5,6 +5,8 @@ import {
     vendorRejectionTemplate,
     vendorExpiredTemplate,
     adminVendorAlertTemplate,
+    vendorSubscriptionWarningTemplate,
+    adminSubscriptionWarningTemplate,
 } from '../utils/templates/vendorEmails.js';
 import { clientWelcomeTemplate } from '../utils/templates/clientEmails.js';
 import {
@@ -57,6 +59,21 @@ const EMAIL_TEMPLATES = {
     'admin-vendor-alert': {
         template: adminVendorAlertTemplate,
         subject: (data) => `New Vendor Registration - ${data.businessName}`,
+        senderType: 'noreply',
+        recipientOverride: () => process.env.EMAIL_VENDOR || 'vendor@karyaa.ae',
+    },
+    'vendor-subscription-warning': {
+        template: vendorSubscriptionWarningTemplate,
+        subject: (data) => {
+            if (data.daysRemaining <= 2) return 'Urgent: Subscription Expiring Soon';
+            if (data.daysRemaining <= 7) return 'Reminder: Subscription Renewal Due';
+            return 'Upcoming Subscription Expiration';
+        },
+        senderType: 'noreply',
+    },
+    'admin-subscription-warning': {
+        template: adminSubscriptionWarningTemplate,
+        subject: (data) => `Vendor Subscription Expiring - ${data.businessName}`,
         senderType: 'noreply',
         recipientOverride: () => process.env.EMAIL_VENDOR || 'vendor@karyaa.ae',
     },

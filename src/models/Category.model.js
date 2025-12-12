@@ -46,19 +46,22 @@ const categorySchema = new mongoose.Schema(
 categorySchema.index({ name: 1 }, { unique: true, collation: { locale: 'en', strength: 2 } });
 
 // Pre-save hook to generate a unique slug from name
-categorySchema.pre("save", async function (next) {
-  if (!this.isModified("name")) return next();
+// Pre-validate hook to generate a unique slug
+categorySchema.pre("validate", async function (next) {
+  if (!this.isModified("name") && this.slug) return next();
 
-  let baseSlug = this.name.toLowerCase().replace(/\s+/g, "-");
-  let slug = baseSlug;
-  let count = 1;
+  if (this.name) {
+    let baseSlug = this.name.toLowerCase().replace(/\s+/g, "-");
+    let slug = baseSlug;
+    let count = 1;
 
-  // Ensure slug is unique
-  while (await mongoose.models.Category.findOne({ slug })) {
-    slug = `${baseSlug}-${count++}`;
+    // Ensure slug is unique
+    while (await mongoose.models.Category.findOne({ slug })) {
+      slug = `${baseSlug}-${count++}`;
+    }
+
+    this.slug = slug;
   }
-
-  this.slug = slug;
   next();
 });
 

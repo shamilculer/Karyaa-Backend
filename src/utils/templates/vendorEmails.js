@@ -5,9 +5,9 @@ import { getEmailHeader, getEmailFooter, wrapEmailContent, renderTemplate } from
  * Sent to vendor when they submit their registration
  */
 export const vendorRegistrationTemplate = (data) => {
-    const { businessName, ownerName, email, referenceId } = data;
+  const { businessName, ownerName, email, referenceId } = data;
 
-    const content = `
+  const content = `
     ${getEmailHeader('Karyaa')}
     <div class="email-body">
       <h2>Welcome to Karyaa, ${ownerName}! 👋</h2>
@@ -44,7 +44,7 @@ export const vendorRegistrationTemplate = (data) => {
     ${getEmailFooter()}
   `;
 
-    return wrapEmailContent(content);
+  return wrapEmailContent(content);
 };
 
 /**
@@ -52,9 +52,9 @@ export const vendorRegistrationTemplate = (data) => {
  * Sent to vendor when their application is approved
  */
 export const vendorApprovalTemplate = (data) => {
-    const { businessName, ownerName, email, dashboardUrl } = data;
+  const { businessName, ownerName, email, dashboardUrl } = data;
 
-    const content = `
+  const content = `
     ${getEmailHeader('Congratulations!')}
     <div class="email-body">
       <h2>🎊 Your Vendor Account is Approved!</h2>
@@ -89,7 +89,7 @@ export const vendorApprovalTemplate = (data) => {
     ${getEmailFooter()}
   `;
 
-    return wrapEmailContent(content);
+  return wrapEmailContent(content);
 };
 
 /**
@@ -97,9 +97,9 @@ export const vendorApprovalTemplate = (data) => {
  * Sent to vendor when their application is rejected
  */
 export const vendorRejectionTemplate = (data) => {
-    const { businessName, ownerName, reason } = data;
+  const { businessName, ownerName, reason } = data;
 
-    const content = `
+  const content = `
     ${getEmailHeader('Application Update')}
     <div class="email-body">
       <h2>Update on Your Karyaa Application</h2>
@@ -137,7 +137,7 @@ export const vendorRejectionTemplate = (data) => {
     ${getEmailFooter()}
   `;
 
-    return wrapEmailContent(content);
+  return wrapEmailContent(content);
 };
 
 /**
@@ -145,9 +145,9 @@ export const vendorRejectionTemplate = (data) => {
  * Sent to vendor when their subscription expires
  */
 export const vendorExpiredTemplate = (data) => {
-    const { businessName, ownerName, expiryDate, renewalUrl } = data;
+  const { businessName, ownerName, expiryDate, renewalUrl } = data;
 
-    const content = `
+  const content = `
     ${getEmailHeader('Subscription Expired')}
     <div class="email-body">
       <h2>⚠️ Your Karyaa Subscription Has Expired</h2>
@@ -191,7 +191,7 @@ export const vendorExpiredTemplate = (data) => {
     ${getEmailFooter()}
   `;
 
-    return wrapEmailContent(content);
+  return wrapEmailContent(content);
 };
 
 /**
@@ -199,9 +199,9 @@ export const vendorExpiredTemplate = (data) => {
  * Sent to admin when a new vendor registers
  */
 export const adminVendorAlertTemplate = (data) => {
-    const { businessName, ownerName, email, phoneNumber, referenceId, city, category } = data;
+  const { businessName, ownerName, email, phoneNumber, referenceId, city, category } = data;
 
-    const content = `
+  const content = `
     ${getEmailHeader('New Vendor Registration')}
     <div class="email-body">
       <h2>🔔 New Vendor Application Received</h2>
@@ -228,5 +228,101 @@ export const adminVendorAlertTemplate = (data) => {
     ${getEmailFooter()}
   `;
 
-    return wrapEmailContent(content);
+  return wrapEmailContent(content);
+};
+
+/**
+ * Vendor Subscription Warning Email Template
+ * Sent to vendor before their subscription expires
+ */
+export const vendorSubscriptionWarningTemplate = (data) => {
+  const { businessName, ownerName, expiryDate, renewalUrl, daysRemaining, bundleName, bundlePrice } = data;
+
+  let subjectLine = '';
+  let urgencyClass = 'info-box';
+  let urgencyMessage = '';
+
+  if (daysRemaining <= 2) {
+    subjectLine = 'Urgent: Subscription Expiring Soon';
+    urgencyClass = 'warning-box';
+    urgencyMessage = 'Your subscription is about to expire! Action needed immediately.';
+  } else if (daysRemaining <= 7) {
+    subjectLine = 'Reminder: Subscription Renewal Due';
+    urgencyClass = 'info-box';
+    urgencyMessage = `Your subscription expires in ${daysRemaining} days.`;
+  } else {
+    subjectLine = 'Upcoming Subscription Expiration';
+    urgencyClass = 'info-box';
+    urgencyMessage = 'Your subscription will expire next month.';
+  }
+
+  const content = `
+    ${getEmailHeader(subjectLine)}
+    <div class="email-body">
+      <h2>⏳ Subscription Expiration Notice</h2>
+      
+      <p>Dear ${ownerName},</p>
+      
+      <p>This is a reminder that your subscription for <strong>${businessName}</strong> is expiring on <strong>${expiryDate}</strong>.</p>
+      
+      <div class="${urgencyClass}">
+        <p><strong>${urgencyMessage}</strong></p>
+      </div>
+
+      <h3>Current Plan Details</h3>
+      <div class="info-box">
+          <p><strong>Bundle:</strong> ${bundleName || 'Standard Package'}</p>
+          <p><strong>Expiry Date:</strong> ${expiryDate}</p>
+      </div>
+
+      <h3>Why Renew?</h3>
+      <ul>
+        <li>Keep your profile visible to customers</li>
+        <li>Continue receiving leads and enquiries</li>
+        <li>Maintain your verified vendor status</li>
+      </ul>
+      
+      <a href="${renewalUrl}" class="button">Renew Subscription Now</a>
+
+      <p style="margin-top: 30px;">
+        If you have any questions, please contact our support team.
+      </p>
+    </div>
+    ${getEmailFooter()}
+  `;
+
+  return wrapEmailContent(content);
+};
+
+/**
+ * Admin Subscription Warning Email Template
+ * Sent to admin when a vendor subscription is expiring
+ */
+export const adminSubscriptionWarningTemplate = (data) => {
+  const { businessName, ownerName, expiryDate, daysRemaining, bundleName, email, phoneNumber } = data;
+
+  const content = `
+    ${getEmailHeader('Vendor Subscription Expiration')}
+    <div class="email-body">
+      <h2>🔔 Vendor Subscription Expiring</h2>
+      
+      <p>The subscription for <strong>${businessName}</strong> is expiring in <strong>${daysRemaining === 0 ? 'Today' : daysRemaining + ' days'}</strong>.</p>
+      
+      <div class="info-box">
+        <p><strong>Vendor:</strong> ${businessName}</p>
+        <p><strong>Owner:</strong> ${ownerName}</p>
+        <p><strong>Bundle:</strong> ${bundleName || 'N/A'}</p>
+        <p><strong>Expiry Date:</strong> ${expiryDate}</p>
+        <p><strong>Contact Email:</strong> ${email}</p>
+        <p><strong>Contact Phone:</strong> ${phoneNumber}</p>
+      </div>
+
+      <p style="margin-top: 30px; font-size: 14px; color: #666;">
+        <em>This is an automated notification.</em>
+      </p>
+    </div>
+    ${getEmailFooter()}
+  `;
+
+  return wrapEmailContent(content);
 };

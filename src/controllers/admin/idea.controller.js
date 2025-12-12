@@ -39,6 +39,15 @@ export const createIdea = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating idea:", error);
+
+    // Handle duplicate key error (E11000)
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "An idea with this title already exists. Please use a different title.",
+      });
+    }
+
     // Mongoose validation errors will often be caught here
     res.status(500).json({
       success: false,
@@ -86,6 +95,15 @@ export const updateIdea = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating idea:", error);
+
+    // Handle duplicate key error (E11000)
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "An idea with this title already exists. Please use a different title.",
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: error.message || "Failed to update idea",
@@ -181,32 +199,32 @@ export const updateIdeaCategory = async (req, res) => {
 
 export const createIdeaCategory = async (req, res) => {
   try {
-      if (!req.user || req.user.role !== "admin") {
-          return res.status(403).json({ success: false, message: "Access denied. Only admins can create categories." });
-      }
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Access denied. Only admins can create categories." });
+    }
 
-      const { name, coverImage } = req.body;
-      
-      if (!name) {
-          return res.status(400).json({ success: false, message: "Category name is required." });
-      }
+    const { name, coverImage } = req.body;
 
-      const newCategory = await IdeaCategory.create({
-          name: name.trim(),
-          coverImage: coverImage || "",
-      });
+    if (!name) {
+      return res.status(400).json({ success: false, message: "Category name is required." });
+    }
 
-      res.status(201).json({
-          success: true,
-          data: newCategory,
-          message: `Category "${newCategory.name}" created successfully.`,
-      });
+    const newCategory = await IdeaCategory.create({
+      name: name.trim(),
+      coverImage: coverImage || "",
+    });
+
+    res.status(201).json({
+      success: true,
+      data: newCategory,
+      message: `Category "${newCategory.name}" created successfully.`,
+    });
 
   } catch (error) {
-      if (error.code === 11000) {
-          return res.status(409).json({ success: false, message: "A category with this name or slug already exists." });
-      }
-      console.error("Error creating idea category:", error);
-      res.status(500).json({ success: false, message: "Server error during creation." });
+    if (error.code === 11000) {
+      return res.status(409).json({ success: false, message: "A category with this name or slug already exists." });
+    }
+    console.error("Error creating idea category:", error);
+    res.status(500).json({ success: false, message: "Server error during creation." });
   }
 };

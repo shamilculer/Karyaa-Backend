@@ -716,7 +716,7 @@ export const getVendorOptions = async (req, res) => {
     }
 
     const options = await Vendor.find(filter)
-      .select("slug businessName businessLogo")
+      .select("slug businessName businessLogo referenceId")
       .sort({ businessName: 1 })
       .limit(parseInt(limit)) // Apply limit
       .lean();
