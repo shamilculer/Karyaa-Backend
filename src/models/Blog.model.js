@@ -26,7 +26,7 @@ const BlogSchema = new Schema(
     coverImage: {
       type: String,
       trim: true,
-      required: [true, "Blog content is required"],
+      required: [true, "Cover image is required"],
     },
 
     author: {
@@ -75,7 +75,7 @@ const BlogSchema = new Schema(
       type: [String],
       default: [],
       validate: {
-        validator: function(v) {
+        validator: function (v) {
           return v.length <= 10;
         },
         message: 'Cannot have more than 10 SEO keywords'
