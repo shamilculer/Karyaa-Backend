@@ -43,7 +43,7 @@ export const requestVendorPasswordReset = async (req, res) => {
         await vendor.save({ validateBeforeSave: false });
 
         // Send email with unhashed token
-        const resetUrl = `${process.env.FRONTEND_URL}/vendor/reset-password?token=${resetToken}`;
+        const resetUrl = `${process.env.FRONTEND_URL}/auth/vendor/reset-password?token=${resetToken}`;
 
         try {
             await sendEmail({
