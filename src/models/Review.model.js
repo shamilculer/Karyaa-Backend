@@ -11,9 +11,12 @@ const reviewSchema = new mongoose.Schema(
         },
         user: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User", 
-            required: [true, "User ID is required"],
+            ref: "User",
+            required: false, // Changed from true to false for guest reviews
         },
+        guestName: String,
+        guestEmail: String,
+        guestPhone: String,
         rating: {
             type: Number,
             min: 1,
@@ -40,7 +43,7 @@ const reviewSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-reviewSchema.index({ vendor: 1, user: 1 }); 
+// reviewSchema.index({ vendor: 1, user: 1 }); // Disabled to allow multiple guest reviews or guests without user ID
 
 // ✅ FIXED: Store previous state in pre-save hook
 reviewSchema.pre("save", async function (next) {

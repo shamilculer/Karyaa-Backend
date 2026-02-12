@@ -2,6 +2,7 @@ import express from 'express';
 import {
     getVendorActiveReviews,
     createReview,
+    createPublicReview,
     updateReview,
     deleteReview
 } from "../../controllers/shared/reviews.controller.js";
@@ -13,7 +14,8 @@ import {
 import {
     getAllReviews,
     getFlaggedReviews,
-    adminUpdateReview
+    adminUpdateReview,
+    adminDeleteReview
 } from "../../controllers/admin/reviews.controller.js";
 import { verifyToken } from '../../middleware/verifyToken.js';
 import { verifyAdmin } from '../../middleware/verifyAdmin.js';
@@ -23,6 +25,16 @@ const router = express.Router();
 
 // Public routes - Get approved reviews for a vendor
 router.get('/vendor/:vendorId', getVendorActiveReviews);
+// Optional auth - if token exists, user info will be attached
+router.post('/public/new', (req, res, next) => {
+    // Try to verify token if present, but don't fail if missing
+    const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
+    if (token) {
+        verifyToken(req, res, next);
+    } else {
+        next();
+    }
+}, createPublicReview);
 
 // User routes - Create, update, delete own reviews
 router.post('/new/:vendorId', verifyToken, createReview);
@@ -38,5 +50,6 @@ router.patch('/unflag/:reviewId', verifyVendor, unflagReview);
 router.get('/admin/all', verifyAdmin, getAllReviews);
 router.get('/admin/flagged', verifyAdmin, getFlaggedReviews);
 router.patch('/admin/:reviewId', verifyAdmin, adminUpdateReview);
+router.delete('/admin/:reviewId', verifyAdmin, adminDeleteReview);
 
 export default router;

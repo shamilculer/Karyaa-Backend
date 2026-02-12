@@ -38,6 +38,8 @@ import bundleStatsRoute from "./routes/admin/analytics/bundleAnalytics.routes.js
 import platformAnalyticsRoute from "./routes/admin/analytics/platformAnalytics.routes.js"
 import revenueAnalyticsRoute from "./routes/admin/analytics/revenueAnalytics.routes.js"
 import dashboardRoute from "./routes/admin/dashboard.routes.js"
+import complaintRoutes from "./routes/public/complaint.routes.js"
+import adminComplaintRoutes from "./routes/admin/complaint.routes.js"
 
 
 dotenv.config();
@@ -100,6 +102,8 @@ app.use('/api/v1/admin/analytics/platform', platformAnalyticsRoute)
 app.use('/api/v1/admin/analytics/revenue', revenueAnalyticsRoute)
 app.use('/api/v1/admin/dashboard', dashboardRoute)
 app.use('/api/v1/admin/seo', seoRoutes)
+app.use('/api/v1/complaints', complaintRoutes)
+app.use('/api/v1/admin/complaints', adminComplaintRoutes)
 
 
 const startServer = async () => {

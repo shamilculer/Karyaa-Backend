@@ -163,3 +163,30 @@ export const adminUpdateReview = async (req, res) => {
         res.status(500).json({ message: "Error updating review" });
     }
 };
+
+/**
+ * @desc Admin delete review (can delete any review)
+ * @route DELETE /api/v1/reviews/admin/:reviewId
+ * @access Admin
+ */
+export const adminDeleteReview = async (req, res) => {
+    try {
+        const { reviewId } = req.params;
+
+        const review = await Review.findById(reviewId);
+        if (!review) {
+            return res.status(404).json({ message: "Review not found" });
+        }
+
+        // Admin can delete any review without ownership check
+        await review.deleteOne();
+
+        res.status(200).json({
+            success: true,
+            message: "Review deleted successfully and vendor statistics recalculated."
+        });
+    } catch (error) {
+        console.error("Error deleting review:", error);
+        res.status(500).json({ message: "Error deleting review" });
+    }
+};

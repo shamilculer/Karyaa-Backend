@@ -28,6 +28,11 @@ import {
     adminBundleEnquiryAlertTemplate
 } from '../utils/templates/bundleEmails.js';
 import { passwordResetTemplate } from '../utils/templates/passwordResetEmail.js';
+import {
+    complaintReceivedTemplate,
+    adminComplaintAlertTemplate,
+    complaintStatusUpdateTemplate
+} from '../utils/templates/complaintEmails.js';
 
 /**
  * Email Service
@@ -141,6 +146,22 @@ const EMAIL_TEMPLATES = {
     'password-reset': {
         template: passwordResetTemplate,
         subject: 'Reset Your Password - Karyaa',
+        senderType: 'noreply',
+    },
+    'complaint-received': {
+        template: complaintReceivedTemplate,
+        subject: (data) => `Complaint Received - ${data.complaintId}`,
+        senderType: 'noreply',
+    },
+    'admin-complaint-alert': {
+        template: adminComplaintAlertTemplate,
+        subject: (data) => `New Complaint Alert - ${data.complaintId}`,
+        senderType: 'noreply',
+        recipientOverride: () => process.env.EMAIL_SUPPORT || 'support@karyaa.ae',
+    },
+    'complaint-status-update': {
+        template: complaintStatusUpdateTemplate,
+        subject: (data) => `Complaint Status Update - ${data.complaintId}`,
         senderType: 'noreply',
     },
 };

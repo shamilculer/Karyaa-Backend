@@ -125,6 +125,95 @@ export const createReview = async (req, res) => {
 };
 
 /**
+ * ✅ Create Public Review (Guest or Logged-in User)
+ * @route POST /api/v1/reviews/public/new
+ * @access Public
+ */
+export const createPublicReview = async (req, res) => {
+    try {
+        const { vendorId, guestName, guestEmail, guestPhone, rating, comment } = req.body;
+        const userId = req.user?.id; // Check if user is logged in
+
+        if (!mongoose.Types.ObjectId.isValid(vendorId)) {
+            return res.status(400).json({ message: "Invalid Vendor ID" });
+        }
+
+        // If user is logged in, use their info
+        if (userId) {
+            // Check if user already reviewed this vendor
+            const existingReview = await Review.findOne({ vendor: vendorId, user: userId });
+            if (existingReview) {
+                return res.status(400).json({ message: "You have already reviewed this vendor." });
+            }
+
+            if (!rating || !comment) {
+                return res.status(400).json({ message: "Rating and Comment are required." });
+            }
+
+            // Ensure vendor exists
+            const vendor = await Vendor.findById(vendorId);
+            if (!vendor) {
+                return res.status(404).json({ message: "Vendor not found" });
+            }
+
+            const review = await Review.create({
+                vendor: vendorId,
+                user: userId,
+                rating,
+                comment,
+            });
+
+            return res.status(201).json({
+                message: "Review submitted successfully.",
+                review,
+            });
+        }
+
+        // Guest review flow
+        if (!guestName || !guestEmail || !rating || !comment) {
+            return res.status(400).json({ message: "Name, Email, Rating and Comment are required." });
+        }
+
+        // Check if guest already reviewed this vendor (by email or phone)
+        const existingGuestReview = await Review.findOne({
+            vendor: vendorId,
+            $or: [
+                { guestEmail: guestEmail },
+                { guestPhone: guestPhone }
+            ]
+        });
+
+        if (existingGuestReview) {
+            return res.status(400).json({ message: "You have already reviewed this vendor." });
+        }
+
+        // Ensure vendor exists
+        const vendor = await Vendor.findById(vendorId);
+        if (!vendor) {
+            return res.status(404).json({ message: "Vendor not found" });
+        }
+
+        const review = await Review.create({
+            vendor: vendorId,
+            guestName,
+            guestEmail,
+            guestPhone,
+            rating,
+            comment,
+        });
+
+        res.status(201).json({
+            message: "Review submitted successfully.",
+            review,
+        });
+
+    } catch (error) {
+        console.error("Error creating public review:", error);
+        res.status(500).json({ message: "Error creating review" });
+    }
+};
+
+/**
  * ✅ Update Review (CLEANED)
  * - The logic to manually check for rating/status changes is simplified, 
  * as .save() triggers the middleware, which always fetches fresh data.
