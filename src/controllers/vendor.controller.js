@@ -45,6 +45,7 @@ export const registerVendor = async (req, res) => {
     occasionsServed,
     selectedBundle,
     address,
+    availability,
     websiteLink,
     facebookLink,
     instagramLink,
@@ -167,6 +168,7 @@ export const registerVendor = async (req, res) => {
       occasionsServed,
       selectedBundle,
       address: finalAddress,
+      availability,
       websiteLink,
       facebookLink,
       instagramLink,
@@ -925,7 +927,9 @@ export const updateVendor = async (req, res) => {
       { $set: updateData },
       { new: true, runValidators: true }
     )
-      .select("businessName businessLogo role slug tagline selectedBundle")
+      .select("-password -__v -tempUploadToken")
+      .populate("mainCategory", "name slug")
+      .populate("subCategories", "name slug");
 
     if (!updatedVendor) {
       return res.status(404).json({

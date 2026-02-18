@@ -464,3 +464,39 @@ export const toggleSubcategoryFlags = async (req, res) => {
     });
   }
 };
+
+/**
+ * @desc    Recalculate vendor counts for all categories and subcategories
+ * @route   POST /api/admin/manage-categories/recalculate-vendor-counts
+ * @access  Admin only
+ */
+export const recalculateVendorCounts = async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only admins can recalculate vendor counts.",
+      });
+    }
+
+    // Import the recalculation utility
+    const recalculate = (await import("../../utils/recalculateVendorCounts.js")).default;
+
+    // Run the recalculation
+    const result = await recalculate();
+
+    return res.status(200).json({
+      success: true,
+      message: "Vendor counts recalculated successfully",
+      data: result,
+    });
+
+  } catch (error) {
+    console.error("Recalculate vendor counts error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while recalculating vendor counts",
+      error: error.message,
+    });
+  }
+};

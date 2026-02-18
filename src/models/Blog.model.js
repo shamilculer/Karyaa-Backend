@@ -93,10 +93,8 @@ const BlogSchema = new Schema(
 // --- Auto-generate unique slug based on title ---
 BlogSchema.pre("validate", async function (next) {
   if (!this.slug && this.title) {
-    let baseSlug = this.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)+/g, "");
+    const { generateSlug } = await import("../utils/slugGenerator.js");
+    let baseSlug = generateSlug(this.title);
 
     let slug = baseSlug;
     let count = 1; // Check for existing slugs and append number if conflict

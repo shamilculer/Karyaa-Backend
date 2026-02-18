@@ -790,8 +790,8 @@ export const updateVendorDetails = async (req, res) => {
       runValidators: true,
     })
       .populate("selectedBundle")
-      .populate("mainCategory")
-      .populate("subCategories");
+      .populate("mainCategory", "name slug")
+      .populate("subCategories", "name slug");
 
     if (!vendor) {
       return res.status(404).json({

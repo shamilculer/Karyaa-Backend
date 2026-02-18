@@ -10,6 +10,7 @@ import {
   getCategoryById,
   toggleSubcategoryFlags,
   updateCategory,
+  recalculateVendorCounts,
 } from "../../controllers/admin/category.controller.js";
 import {
   addBlogPost,
@@ -75,6 +76,7 @@ router.post("/manage-categories/subcategory/new", verifyToken, addSubCategory);
 router.put("/manage-categories/subcategory/:id", verifyToken, editSubCategory);
 router.delete("/manage-categories/subcategory/delete", verifyToken, deleteSubCategories);
 router.patch("/manage-categories/subcategory/toggle-flag", verifyToken, toggleSubcategoryFlags);
+router.post("/manage-categories/recalculate-vendor-counts", verifyToken, recalculateVendorCounts);
 
 router.post("/blog/new", verifyToken, addBlogPost)
 router.put("/blog/edit/:id", verifyToken, editBlogPost)

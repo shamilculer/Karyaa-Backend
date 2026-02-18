@@ -51,7 +51,8 @@ categorySchema.pre("validate", async function (next) {
   if (!this.isModified("name") && this.slug) return next();
 
   if (this.name) {
-    let baseSlug = this.name.toLowerCase().replace(/\s+/g, "-");
+    const { generateSlug } = await import("../utils/slugGenerator.js");
+    let baseSlug = generateSlug(this.name);
     let slug = baseSlug;
     let count = 1;
 

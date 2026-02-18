@@ -15,6 +15,20 @@ const galleryItemSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Media type: image or video
+    mediaType: {
+      type: String,
+      enum: ['image', 'video'],
+      default: 'image',
+      required: true,
+    },
+
+    // Optional thumbnail URL for videos
+    thumbnail: {
+      type: String,
+      trim: true,
+    },
+
     // Display prioritization
     isFeatured: {
       type: Boolean,

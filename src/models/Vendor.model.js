@@ -157,6 +157,40 @@ const vendorSchema = mongoose.Schema(
             min: 0,
         },
 
+        // Business Availability/Hours
+        availability: {
+            type: {
+                type: String,
+                enum: ['24/7', 'custom'],
+                default: '24/7',
+            },
+            // Legacy fields (optional to keep for migration or remove if starting fresh)
+            openingTime: { type: String },
+            closingTime: { type: String },
+
+            // New Daily Schedule
+            days: [{
+                day: {
+                    type: String,
+                    enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+                    required: true
+                },
+                isOpen: {
+                    type: Boolean,
+                    default: true
+                },
+                open: {
+                    type: String,
+                    default: '09:00'
+                },
+                close: {
+                    type: String,
+                    default: '17:00'
+                }
+            }]
+        },
+
+
         mainCategory: {
             type: [mongoose.Schema.Types.ObjectId],
             ref: "Category",
@@ -278,11 +312,7 @@ const vendorSchema = mongoose.Schema(
                 latitude: { type: Number },
                 longitude: { type: Number },
             },
-            googleMapLink: {
-                type: String,
-                trim: true,
-                default: "",
-            },
+
         },
 
         websiteLink: {
@@ -367,9 +397,25 @@ vendorSchema.index(
 /**
  * Helper: normalize array of ObjectIds to string ids (for comparison)
  */
+/**
+ * Helper: safely extraction ID from string, ObjectId, or populated object
+ */
+function getId(item) {
+    if (!item) return null;
+    if (typeof item === 'string') return item;
+    if (item instanceof mongoose.Types.ObjectId) return String(item);
+    if (item._id) return String(item._id);
+    // Fallback: If it's an object but not an ObjectId and has no _id, return null 
+    // to avoid returning "[object Object]" which causes CastError
+    return null;
+}
+
+/**
+ * Helper: normalize array of ObjectIds to string ids (for comparison)
+ */
 function idsToStrings(arr) {
     if (!arr) return [];
-    return arr.map((v) => String(v));
+    return arr.map((v) => getId(v)).filter(Boolean);
 }
 
 /**
@@ -387,7 +433,7 @@ async function incCategoryCounts({ mainIds = [], subIds = [], bundleId = null, i
     if (subIds && subIds.length) {
         ops.push(SubCategory.updateMany({ _id: { $in: subIds } }, { $inc: { vendorCount: inc } }));
     }
-    if (bundleId) {
+    if (bundleId && mongoose.isValidObjectId(bundleId)) {
         ops.push(Bundle.findByIdAndUpdate(bundleId, { $inc: { subscribersCount: inc } }));
     }
     try {
@@ -407,8 +453,8 @@ async function adjustCountsForChange(prev = null, next = null) {
     const prevSub = idsToStrings(prev?.subCategories || []);
     const nextSub = idsToStrings(next?.subCategories || []);
 
-    const prevBundle = prev?.selectedBundle ? String(prev.selectedBundle) : null;
-    const nextBundle = next?.selectedBundle ? String(next.selectedBundle) : null;
+    const prevBundle = getId(prev?.selectedBundle);
+    const nextBundle = getId(next?.selectedBundle);
 
     const becameApproved = prevStatus !== "approved" && nextStatus === "approved";
     const lostApproved = prevStatus === "approved" && (nextStatus === "pending" || nextStatus === "rejected");
@@ -504,11 +550,8 @@ vendorSchema.pre("save", async function (next) {
 
         // 3. Slug Generation
         if (this.isModified("businessName") || this.isNew) {
-            let baseSlug = this.businessName
-                .toLowerCase()
-                .replace(/&/g, "and")
-                .replace(/\s+/g, "-")
-                .replace(/[^a-z0-9-]/g, "");
+            const { generateSlug } = await import("../utils/slugGenerator.js");
+            let baseSlug = generateSlug(this.businessName);
 
             let slug = baseSlug;
             let count = 1;
@@ -568,12 +611,14 @@ vendorSchema.pre("findOneAndUpdate", async function (next) {
     next();
 });
 
-vendorSchema.post("findOneAndUpdate", async function (res, next) {
+vendorSchema.post("findOneAndUpdate", async function (doc, next) {
     try {
         const prev = this._previousVendorState || null;
-        const query = this.getQuery();
-        const current = await this.model.findOne(query).lean();
-        if (current) {
+        // Use the returned document directly instead of re-querying
+        // The 'doc' parameter contains the updated document
+        if (doc) {
+            // Convert to plain object if needed
+            const current = doc.toObject ? doc.toObject() : doc;
             await adjustCountsForChange(prev, current);
         }
     } catch (err) {

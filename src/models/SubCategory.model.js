@@ -55,7 +55,8 @@ subCategorySchema.pre("validate", async function (next) {
 
   // If the name is being modified (or it's new), regenerate the slug
   if (this.name) {
-    let baseSlug = this.name.toLowerCase().replace(/\s+/g, "-");
+    const { generateSlug } = await import("../utils/slugGenerator.js");
+    let baseSlug = generateSlug(this.name);
     let slug = baseSlug;
     let count = 1;
 
