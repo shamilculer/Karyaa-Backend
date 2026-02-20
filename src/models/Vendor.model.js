@@ -40,24 +40,31 @@ const vendorSchema = mongoose.Schema(
             default: false,
             index: true,
         },
+        vendorType: {
+            type: String,
+            enum: ["business", "freelancer"],
+            default: "business",
+            index: true,
+        },
         // UAE-Specific Fields (Required if not international)
         tradeLicenseNumber: {
             type: String,
             required: function () {
-                return !this.isInternational;
+                return !this.isInternational && this.vendorType !== "freelancer";
             },
             trim: true,
         },
         tradeLicenseCopy: {
             type: String,
             required: function () {
-                return !this.isInternational;
+                return !this.isInternational && this.vendorType !== "freelancer";
             },
         },
         personalEmiratesIdNumber: {
             type: String,
             required: function () {
-                return !this.isInternational;
+                // Required for UAE business vendors only
+                return !this.isInternational && this.vendorType !== 'freelancer';
             },
             trim: true,
         },
@@ -71,7 +78,7 @@ const vendorSchema = mongoose.Schema(
         businessLicenseCopy: {
             type: String,
             required: function () {
-                return this.isInternational;
+                return this.isInternational && this.vendorType !== "freelancer";
             },
         },
         passportOrIdCopy: {

@@ -55,7 +55,8 @@ import {
   deleteAdminComment,
   addAdditionalDocument,
   deleteAdditionalDocument,
-  deleteVendor
+  deleteVendor,
+  reorderVendorGallery
 } from "../../controllers/admin/vendor.controller.js";
 import { createBanner, deleteBanner, getAllBanners, toggleStatus, updateBanner } from "../../controllers/admin/adBanner.controller.js";
 import { deleteReferrals, getReferrals, updateReferralStatus } from "../../controllers/user/referral.controller.js";
@@ -120,6 +121,7 @@ router.post("/vendors/:id/gallery/bulk", verifyToken, addVendorGalleryItems);
 router.delete("/vendors/:id/gallery/bulk", verifyToken, deleteVendorGalleryItems);
 router.put("/vendors/:id/gallery/:itemId", verifyToken, updateVendorGalleryItem);
 router.delete("/vendors/:id/gallery/:itemId", verifyToken, deleteVendorGalleryItem);
+router.patch("/vendors/:id/gallery/reorder", verifyToken, reorderVendorGallery);
 router.get("/vendors/:id/packages", verifyToken, getVendorPackages);
 router.post("/vendors/:id/packages", verifyToken, addVendorPackage);
 router.put("/vendors/:id/packages/:packageId", verifyToken, updateVendorPackage);

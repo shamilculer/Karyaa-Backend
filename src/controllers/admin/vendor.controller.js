@@ -57,7 +57,7 @@ export const getAllVendors = async (req, res) => {
 
       const vendors = await Vendor.find(matchQuery)
         .select(
-          "referenceId businessName businessLogo ownerName ownerProfileImage email phoneNumber address.city address.country isInternational averageRating vendorStatus selectedBundle subscriptionStartDate subscriptionEndDate mainCategory createdAt"
+          "referenceId businessName businessLogo ownerName ownerProfileImage email phoneNumber address.city address.country isInternational vendorType averageRating vendorStatus selectedBundle subscriptionStartDate subscriptionEndDate mainCategory createdAt"
         )
         .populate("selectedBundle", "name price")
         .populate("mainCategory", "name")
@@ -80,6 +80,7 @@ export const getAllVendors = async (req, res) => {
         city: vendor.address?.city || "N/A",
         country: vendor.address?.country || "N/A",
         isInternational: vendor.isInternational,
+        vendorType: vendor.vendorType || "business",
         rating: vendor.averageRating || 0,
         vendorStatus: vendor.vendorStatus,
         bundleName: vendor.selectedBundle?.name || "N/A",
@@ -203,6 +204,7 @@ export const getAllVendors = async (req, res) => {
       city: vendor.address?.city || "N/A",
       country: vendor.address?.country || "N/A",
       isInternational: vendor.isInternational,
+      vendorType: vendor.vendorType || "business",
       rating: vendor.averageRating || 0,
       vendorStatus: vendor.vendorStatus,
       bundleName: vendor.bundleInfo?.name || "N/A",
@@ -889,7 +891,7 @@ export const updateVendorBundle = async (req, res) => {
 export const getVendorGallery = async (req, res) => {
   try {
     const { id } = req.params;
-    const galleryItems = await GalleryItem.find({ vendor: id }).sort({ createdAt: -1 });
+    const galleryItems = await GalleryItem.find({ vendor: id }).sort({ orderIndex: 1, createdAt: -1 });
     res.status(200).json({
       success: true,
       data: galleryItems,
@@ -1044,6 +1046,14 @@ export const updateVendorGalleryItem = async (req, res) => {
     const { id, itemId } = req.params;
     const { url, isFeatured, orderIndex } = req.body;
 
+    const existingItem = await GalleryItem.findOne({ _id: itemId, vendor: id });
+    if (!existingItem) {
+      return res.status(404).json({
+        success: false,
+        message: "Gallery item not found",
+      });
+    }
+
     const updateFields = {};
     if (url !== undefined) updateFields.url = url;
     if (isFeatured !== undefined) updateFields.isFeatured = isFeatured;
@@ -1067,6 +1077,19 @@ export const updateVendorGalleryItem = async (req, res) => {
         success: false,
         message: "Gallery item not found",
       });
+    }
+
+    // Best-effort: delete old S3 object if URL changed
+    if (existingItem.url && url && existingItem.url !== url) {
+      try {
+        const { deleteS3Object, getKeyFromUrl } = await import("../../utils/s3.js");
+        const key = getKeyFromUrl(existingItem.url);
+        if (key) {
+          await deleteS3Object(key);
+        }
+      } catch (s3Error) {
+        console.error("Error deleting old gallery item from S3:", s3Error);
+      }
     }
 
     res.status(200).json({
@@ -1274,7 +1297,8 @@ export const addVendorGalleryItems = async (req, res) => {
     const galleryItems = items.map(item => ({
       vendor: id,
       url: item.url,
-      type: item.type || "image",
+      mediaType: item.mediaType || 'image',
+      thumbnail: item.thumbnail || undefined,
       isFeatured: item.isFeatured || false,
       orderIndex: item.orderIndex || 0,
     }));
@@ -1683,5 +1707,44 @@ export const deleteVendor = async (req, res) => {
       success: false,
       message: error.message || "An error occurred while deleting vendor",
     });
+  }
+};
+
+/**
+ * Reorder gallery items for a specific vendor (Admin).
+ * Route: PATCH /api/v1/admin/vendors/:id/gallery/reorder
+ * Body: { orderedIds: string[] }
+ */
+export const reorderVendorGallery = async (req, res) => {
+  try {
+    const { id: vendorId } = req.params;
+    const { orderedIds } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(vendorId)) {
+      return res.status(400).json({ success: false, message: "Invalid vendor ID." });
+    }
+
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+      return res.status(400).json({ success: false, message: "orderedIds array is required." });
+    }
+
+    const invalid = orderedIds.filter((id) => !mongoose.Types.ObjectId.isValid(id));
+    if (invalid.length > 0) {
+      return res.status(400).json({ success: false, message: "One or more invalid item IDs." });
+    }
+
+    const bulkOps = orderedIds.map((id, index) => ({
+      updateOne: {
+        filter: { _id: id, vendor: vendorId },
+        update: { $set: { orderIndex: index } },
+      },
+    }));
+
+    await GalleryItem.bulkWrite(bulkOps);
+
+    return res.status(200).json({ success: true, message: "Gallery order updated." });
+  } catch (error) {
+    console.error("Error reordering vendor gallery (admin):", error);
+    return res.status(500).json({ success: false, message: "Server error while reordering gallery." });
   }
 };

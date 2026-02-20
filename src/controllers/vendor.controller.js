@@ -25,6 +25,7 @@ export const registerVendor = async (req, res) => {
     phoneNumber,
     password,
     isInternational,
+    vendorType,
     // UAE-specific fields
     tradeLicenseNumber,
     tradeLicenseCopy,
@@ -33,6 +34,7 @@ export const registerVendor = async (req, res) => {
     // NEW: International-specific fields
     businessLicenseCopy,
     passportOrIdCopy,
+    freelancerOtherDoc,
     // Common business fields
     businessName,
     businessLogo,
@@ -53,6 +55,9 @@ export const registerVendor = async (req, res) => {
   } = req.body;
 
   try {
+    const normalizedVendorType = vendorType === "freelancer" ? "freelancer" : "business";
+    const isFreelancer = normalizedVendorType === "freelancer";
+
     // Check for existing vendor conflicts
     const conflictQuery = {
       $or: [
@@ -62,7 +67,7 @@ export const registerVendor = async (req, res) => {
     };
 
     // Only check tradeLicenseNumber if vendor is not international
-    if (!isInternational && tradeLicenseNumber) {
+    if (!isInternational && !isFreelancer && tradeLicenseNumber) {
       conflictQuery.$or.push({ tradeLicenseNumber });
     }
 
@@ -146,16 +151,20 @@ export const registerVendor = async (req, res) => {
       phoneNumber,
       password,
       isInternational: isInternational || false,
+      vendorType: normalizedVendorType,
 
       // Conditionally set UAE fields
-      tradeLicenseNumber: !isInternational ? tradeLicenseNumber : undefined,
-      tradeLicenseCopy: !isInternational ? tradeLicenseCopy : undefined,
+      tradeLicenseNumber: !isInternational && !isFreelancer ? tradeLicenseNumber : undefined,
+      tradeLicenseCopy: !isInternational && !isFreelancer ? tradeLicenseCopy : undefined,
       personalEmiratesIdNumber: !isInternational ? personalEmiratesIdNumber : undefined,
       emiratesIdCopy: !isInternational ? emiratesIdCopy : undefined,
 
       // Conditionally set International fields
-      businessLicenseCopy: isInternational ? businessLicenseCopy : undefined,
+      businessLicenseCopy: isInternational && !isFreelancer ? businessLicenseCopy : undefined,
       passportOrIdCopy: isInternational ? passportOrIdCopy : undefined,
+      additionalDocuments: freelancerOtherDoc
+        ? [{ documentName: "Other Document", documentUrl: freelancerOtherDoc }]
+        : [],
 
       businessName,
       businessLogo,
@@ -184,6 +193,7 @@ export const registerVendor = async (req, res) => {
       { field: 'emiratesIdCopy', value: emiratesIdCopy },
       { field: 'businessLicenseCopy', value: businessLicenseCopy },
       { field: 'passportOrIdCopy', value: passportOrIdCopy },
+      { field: 'freelancerOtherDoc', value: freelancerOtherDoc },
       { field: 'ownerProfileImage', value: ownerProfileImage }
     ];
 
@@ -601,7 +611,7 @@ export const getApprovedVendors = async (req, res) => {
       const galleryItems = await GalleryItem.find({
         vendor: { $in: vendorIds },
       })
-        .select("url vendor isFeatured")
+        .select("url vendor isFeatured mediaType thumbnail")
         .sort({ orderIndex: 1, createdAt: -1 })
         .lean();
 
@@ -613,6 +623,8 @@ export const getApprovedVendors = async (req, res) => {
         acc[vendorId].push({
           url: item.url,
           isFeatured: item.isFeatured,
+          mediaType: item.mediaType || 'image',
+          thumbnail: item.thumbnail || null,
         });
         return acc;
       }, {});

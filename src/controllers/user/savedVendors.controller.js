@@ -52,6 +52,8 @@ export const getSavedVendors = async (req, res) => {
                                         $project: {
                                             url: 1,
                                             isFeatured: 1,
+                                            mediaType: 1,
+                                            thumbnail: 1,
                                             orderIndex: 1,
                                             createdAt: 1
                                         }
