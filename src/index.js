@@ -71,39 +71,39 @@ app.get('/', (req, res) => {
 });
 
 
-app.use('/api/v1/util', utilRoutes);
-app.use('/api/v1/user', userRoutes);
-app.use('/api/v1/blog', blogRoutes);
-app.use('/api/v1/ideas', ideaRoutes);
-app.use('/api/v1/subcategories', subCategoryRoutes);
-app.use('/api/v1/categories', categoryRoutes);
-app.use('/api/v1/vendors', vendorRoutes);
-app.use('/api/v1/reviews', reviewRoutes);
-app.use('/api/v1/leads', leadRoutes);
-app.use('/api/v1/support-tickets', ticketRoutes)
-app.use('/api/v1/gallery', galleryRoutes)
-app.use('/api/v1/packages', packageRoutes)
-app.use('/api/v1/bundles', bundleRoutes)
-app.use("/api/v1/banners", bannerRoutes)
-app.use("/api/v1/brand-details", brandDetailRoutes);
-app.use("/api/v1/referrals", referralRoutes);
-app.use("/api/v1/content", contentRoutes);
-app.use("/api/v1/analytics", analyticsRoutes);
-app.use("/api/v1/contact", contactRoutes);
-app.use("/api/v1/newsletter", newsletterRoutes);
+app.use('/v1/util', utilRoutes);
+app.use('/v1/user', userRoutes);
+app.use('/v1/blog', blogRoutes);
+app.use('/v1/ideas', ideaRoutes);
+app.use('/v1/subcategories', subCategoryRoutes);
+app.use('/v1/categories', categoryRoutes);
+app.use('/v1/vendors', vendorRoutes);
+app.use('/v1/reviews', reviewRoutes);
+app.use('/v1/leads', leadRoutes);
+app.use('/v1/support-tickets', ticketRoutes)
+app.use('/v1/gallery', galleryRoutes)
+app.use('/v1/packages', packageRoutes)
+app.use('/v1/bundles', bundleRoutes)
+app.use("/v1/banners", bannerRoutes)
+app.use("/v1/brand-details", brandDetailRoutes);
+app.use("/v1/referrals", referralRoutes);
+app.use("/v1/content", contentRoutes);
+app.use("/v1/analytics", analyticsRoutes);
+app.use("/v1/contact", contactRoutes);
+app.use("/v1/newsletter", newsletterRoutes);
 
 // Test routes (remove in production)
-app.use('/api/v1/test/email', testEmailRoutes);
+app.use('/v1/test/email', testEmailRoutes);
 
 
-app.use('/api/v1/admin', adminRoutes)
-app.use('/api/v1/admin/analytics/bundles', bundleStatsRoute)
-app.use('/api/v1/admin/analytics/platform', platformAnalyticsRoute)
-app.use('/api/v1/admin/analytics/revenue', revenueAnalyticsRoute)
-app.use('/api/v1/admin/dashboard', dashboardRoute)
-app.use('/api/v1/admin/seo', seoRoutes)
-app.use('/api/v1/complaints', complaintRoutes)
-app.use('/api/v1/admin/complaints', adminComplaintRoutes)
+app.use('/v1/admin', adminRoutes)
+app.use('/v1/admin/analytics/bundles', bundleStatsRoute)
+app.use('/v1/admin/analytics/platform', platformAnalyticsRoute)
+app.use('/v1/admin/analytics/revenue', revenueAnalyticsRoute)
+app.use('/v1/admin/dashboard', dashboardRoute)
+app.use('/v1/admin/seo', seoRoutes)
+app.use('/v1/complaints', complaintRoutes)
+app.use('/v1/admin/complaints', adminComplaintRoutes)
 
 
 const startServer = async () => {
