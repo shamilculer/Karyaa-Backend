@@ -4,6 +4,7 @@ import Package from "../../models/Package.model.js";
 import Bundle from "../../models/Bundle.model.js";
 import mongoose from "mongoose";
 import { sendEmail, prepareVendorData } from "../../services/email.service.js";
+import ExcelJS from "exceljs";
 
 // Get all vendors with pagination and filters (for admin table)
 export const getAllVendors = async (req, res) => {
@@ -1746,5 +1747,205 @@ export const reorderVendorGallery = async (req, res) => {
   } catch (error) {
     console.error("Error reordering vendor gallery (admin):", error);
     return res.status(500).json({ success: false, message: "Server error while reordering gallery." });
+  }
+};
+
+// Export vendors to Excel
+export const exportVendorsToExcel = async (req, res) => {
+  try {
+    const {
+      search = "",
+      vendorStatus = "",
+      city = "",
+      isInternational = "",
+      isRecommended = "",
+      expiryStatus = "",
+      sortBy = "createdAt",
+      sortOrder = "desc",
+    } = req.query;
+
+    const matchQuery = {};
+    if (vendorStatus) matchQuery.vendorStatus = vendorStatus;
+    if (city) matchQuery["address.city"] = city;
+    if (isInternational !== "") matchQuery.isInternational = isInternational === "true";
+    if (isRecommended !== "") matchQuery.isRecommended = isRecommended === "true";
+
+    if (expiryStatus) {
+      const now = new Date();
+      if (expiryStatus === 'expiring-soon') {
+        const threeMonthsFromNow = new Date();
+        threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
+        matchQuery.subscriptionEndDate = {
+          $gte: now,
+          $lte: threeMonthsFromNow
+        };
+      } else if (expiryStatus === 'expired') {
+        matchQuery.subscriptionEndDate = { $lt: now };
+      }
+    }
+
+    let vendors = [];
+    
+    if (!search || search.trim() === "") {
+      let sort;
+      if (expiryStatus) {
+        sort = { subscriptionEndDate: 1 };
+      } else {
+        sort = { [sortBy]: sortOrder === "asc" ? 1 : -1 };
+      }
+
+      vendors = await Vendor.find(matchQuery)
+        .select(
+          "referenceId businessName ownerName email phoneNumber address.city address.country isInternational vendorType averageRating vendorStatus selectedBundle subscriptionStartDate subscriptionEndDate mainCategory createdAt"
+        )
+        .populate("selectedBundle", "name price")
+        .populate("mainCategory", "name")
+        .sort(sort);
+    } else {
+      const searchRegex = new RegExp(search, "i");
+
+      const aggregationPipeline = [
+        { $match: matchQuery },
+        {
+          $lookup: {
+            from: "categories",
+            localField: "mainCategory",
+            foreignField: "_id",
+            as: "mainCategoryDocs",
+          },
+        },
+        {
+          $lookup: {
+            from: "subcategories",
+            localField: "subCategories",
+            foreignField: "_id",
+            as: "subCategoryDocs",
+          },
+        },
+        {
+          $lookup: {
+            from: "bundles",
+            localField: "selectedBundle",
+            foreignField: "_id",
+            as: "bundleDocs",
+          },
+        },
+        {
+          $match: {
+            $or: [
+              { referenceId: searchRegex },
+              { businessName: searchRegex },
+              { ownerName: searchRegex },
+              { email: searchRegex },
+              { "address.city": searchRegex },
+              { "address.country": searchRegex },
+              { "mainCategoryDocs.name": searchRegex },
+              { "subCategoryDocs.name": searchRegex },
+            ],
+          },
+        },
+        {
+          $addFields: {
+            mainCategoryNames: {
+              $map: {
+                input: "$mainCategoryDocs",
+                as: "cat",
+                in: "$$cat.name",
+              },
+            },
+            bundleInfo: { $arrayElemAt: ["$bundleDocs", 0] },
+          },
+        },
+        {
+          $sort: expiryStatus
+            ? { subscriptionEndDate: 1 }
+            : { [sortBy]: sortOrder === "asc" ? 1 : -1 }
+        }
+      ];
+
+      const result = await Vendor.aggregate(aggregationPipeline);
+      vendors = result || [];
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Karyaa Admin';
+    workbook.created = new Date();
+
+    const worksheet = workbook.addWorksheet('Vendors List', {
+      views: [{ state: 'frozen', ySplit: 1 }]
+    });
+
+    worksheet.columns = [
+      { header: 'Reference ID', key: 'referenceId', width: 15 },
+      { header: 'Business Name', key: 'businessName', width: 30 },
+      { header: 'Owner Name', key: 'ownerName', width: 25 },
+      { header: 'Email', key: 'email', width: 30 },
+      { header: 'Phone Number', key: 'phoneNumber', width: 20 },
+      { header: 'City', key: 'city', width: 20 },
+      { header: 'Country', key: 'country', width: 20 },
+      { header: 'International', key: 'isInternational', width: 15 },
+      { header: 'Type', key: 'vendorType', width: 15 },
+      { header: 'Categories', key: 'mainCategories', width: 30 },
+      { header: 'Status', key: 'vendorStatus', width: 15 },
+      { header: 'Bundle Name', key: 'bundleName', width: 20 },
+      { header: 'Subscription Start', key: 'subscriptionStartDate', width: 20 },
+      { header: 'Subscription End', key: 'subscriptionEndDate', width: 20 },
+      { header: 'Registration Date', key: 'registeredAt', width: 20 },
+    ];
+
+    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4F46E5' }
+    };
+    worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+    const formatDate = (date) => {
+      if (!date) return 'N/A';
+      const d = new Date(date);
+      return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString('en-GB');
+    };
+
+    vendors.forEach((vendor) => {
+      const isAggregated = vendor.bundleInfo !== undefined;
+      
+      const rowData = {
+        referenceId: vendor.referenceId || "N/A",
+        businessName: vendor.businessName || "N/A",
+        ownerName: vendor.ownerName || "N/A",
+        email: vendor.email || "N/A",
+        phoneNumber: vendor.phoneNumber || "N/A",
+        city: vendor.address?.city || "N/A",
+        country: vendor.address?.country || "N/A",
+        isInternational: vendor.isInternational ? "Yes" : "No",
+        vendorType: vendor.vendorType || "business",
+        vendorStatus: vendor.vendorStatus ? vendor.vendorStatus.toUpperCase() : "UNKNOWN",
+        bundleName: isAggregated 
+            ? (vendor.bundleInfo?.name || "N/A") 
+            : (vendor.selectedBundle?.name || "N/A"),
+        mainCategories: isAggregated
+            ? (vendor.mainCategoryNames?.join(", ") || "N/A")
+            : (vendor.mainCategory?.map((cat) => cat.name).join(", ") || "N/A"),
+        subscriptionStartDate: formatDate(vendor.subscriptionStartDate),
+        subscriptionEndDate: formatDate(vendor.subscriptionEndDate),
+        registeredAt: formatDate(vendor.createdAt),
+      };
+
+      worksheet.addRow(rowData);
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=vendors_export_${new Date().getTime()}.xlsx`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (error) {
+    console.error("Error exporting vendors to Excel:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "An error occurred while exporting vendors",
+    });
   }
 };

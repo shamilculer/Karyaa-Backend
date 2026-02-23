@@ -13,7 +13,7 @@ export const getCoordinatesFromAddress = async (addressData) => {
         addressData.area,
         addressData.city,
         addressData.state,
-        "UAE"
+        addressData.country
     ].filter(p => p && p.trim() !== '');
     
     const addressQuery = parts.join(', ');
@@ -28,7 +28,6 @@ export const getCoordinatesFromAddress = async (addressData) => {
     const params = new URLSearchParams({
         q: addressQuery,
         key: process.env.OPENCAGE_API_KEY,
-        countrycode: 'ae',
         limit: 1
     });
 

@@ -56,7 +56,8 @@ import {
   addAdditionalDocument,
   deleteAdditionalDocument,
   deleteVendor,
-  reorderVendorGallery
+  reorderVendorGallery,
+  exportVendorsToExcel
 } from "../../controllers/admin/vendor.controller.js";
 import { createBanner, deleteBanner, getAllBanners, toggleStatus, updateBanner } from "../../controllers/admin/adBanner.controller.js";
 import { deleteReferrals, getReferrals, updateReferralStatus } from "../../controllers/user/referral.controller.js";
@@ -104,6 +105,7 @@ router.delete("/ideas/delete/:id", verifyToken, deleteIdea);
 router.put("/ideas/category/:id/update", verifyToken, updateIdeaCategory)
 router.post("/ideas/category/new", verifyToken, createIdeaCategory)
 
+router.get("/vendors/export", verifyToken, exportVendorsToExcel);
 router.get("/vendors/all", verifyToken, getAllVendors);
 router.get("/vendors/:id", verifyToken, getVendorById)
 router.put("/vendors/:id/status", verifyToken, updateVendorStatus);
