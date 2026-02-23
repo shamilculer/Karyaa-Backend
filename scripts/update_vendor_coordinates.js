@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import connectDB from '../src/config/db.js';
-import Vendor from '../src/models/vendor.model.js';
+import Vendor from '../src/models/Vendor.model.js';
 import { getCoordinatesFromAddress } from '../src/utils/fetchCordinates.js';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
