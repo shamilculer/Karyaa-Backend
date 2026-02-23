@@ -916,22 +916,20 @@ export const updateVendor = async (req, res) => {
     let finalAddress = updateData.address;
 
     if (finalAddress) {
-      coordinates = finalAddress.coordinates;
-
       finalAddress.country = finalAddress.country || (isInternational ? "" : "UAE");
 
-      if (!coordinates || (!coordinates.latitude && !coordinates.longitude)) {
-        const fetchedCoords = await getCoordinatesFromAddress(finalAddress);
-
-        if (fetchedCoords) {
-          coordinates = fetchedCoords;
-        } else {
-          console.warn(`Geocoding failed for the provided address for vendor ${vendorId}.`);
-        }
+      // Always re-fetch coordinates when address is updated so stale coords are never kept
+      const fetchedCoords = await getCoordinatesFromAddress(finalAddress);
+      if (fetchedCoords) {
+        coordinates = fetchedCoords;
+      } else {
+        // Fall back to whatever was sent in the request (could be null)
+        coordinates = finalAddress.coordinates || null;
+        console.warn(`Geocoding failed for the updated address for vendor ${vendorId}.`);
       }
 
       finalAddress.coordinates = coordinates;
-      updateData.address = finalAddress; // Update the main object with the new address structure
+      updateData.address = finalAddress;
     }
 
     const updatedVendor = await Vendor.findByIdAndUpdate(

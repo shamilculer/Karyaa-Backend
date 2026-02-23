@@ -5,6 +5,7 @@ import Bundle from "../../models/Bundle.model.js";
 import mongoose from "mongoose";
 import { sendEmail, prepareVendorData } from "../../services/email.service.js";
 import ExcelJS from "exceljs";
+import { getCoordinatesFromAddress } from "../../utils/fetchCordinates.js";
 
 // Get all vendors with pagination and filters (for admin table)
 export const getAllVendors = async (req, res) => {
@@ -787,6 +788,26 @@ export const updateVendorDetails = async (req, res) => {
     delete updateData.password;
     delete updateData.referenceId;
     delete updateData.slug; // Usually slug shouldn't be changed manually, or if it is, we need to handle uniqueness
+
+    // Re-fetch coordinates whenever an address is being updated
+    if (updateData.address) {
+      const vendor = await Vendor.findById(id).select("isInternational").lean();
+      const isInternational = updateData.isInternational !== undefined
+        ? updateData.isInternational
+        : vendor?.isInternational;
+
+      const addressToGeocode = {
+        ...updateData.address,
+        country: updateData.address.country || (isInternational ? "" : "UAE"),
+      };
+
+      const fetchedCoords = await getCoordinatesFromAddress(addressToGeocode);
+      if (fetchedCoords) {
+        updateData.address.coordinates = fetchedCoords;
+      } else {
+        console.warn(`Admin update: Geocoding failed for vendor ${id}.`);
+      }
+    }
 
     const vendor = await Vendor.findByIdAndUpdate(id, updateData, {
       new: true,
