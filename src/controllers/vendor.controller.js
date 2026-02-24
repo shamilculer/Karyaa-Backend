@@ -593,7 +593,7 @@ export const getApprovedVendors = async (req, res) => {
 
     const vendors = await Vendor.find(query)
       .select(
-        "businessName slug businessDescription businessLogo address.city averageRating  pricingStartingFrom  isRecommended tagline address.coordinates referenceId"
+        "businessName slug businessDescription businessLogo address.city address.country averageRating  pricingStartingFrom  isRecommended tagline address.coordinates referenceId"
       )
       .populate("mainCategory", "name slug")
       .sort(sortOptions)
