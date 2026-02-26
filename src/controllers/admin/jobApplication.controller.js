@@ -1,5 +1,28 @@
 import JobApplication from '../../models/JobApplication.model.js';
 import JobPosting from '../../models/JobPosting.model.js';
+import { deleteS3Object, getKeyFromUrl } from '../../utils/s3.js';
+
+/**
+ * Helper — collects all attachment URLs from a job application and deletes them from S3.
+ * Uses Promise.allSettled so one failed delete won't block others.
+ * @param {object} application - Mongoose document with attachments field
+ */
+const deleteApplicationFiles = async (application) => {
+    const urls = [
+        application.attachments?.photo,
+        application.attachments?.photo1,
+        application.attachments?.resume,
+    ].filter(Boolean);
+
+    if (urls.length === 0) return;
+
+    await Promise.allSettled(
+        urls.map(url => {
+            const key = getKeyFromUrl(url);
+            return key ? deleteS3Object(key) : Promise.resolve();
+        })
+    );
+};
 
 // @desc    Get all job applications
 // @route   GET /api/admin/job-applications
@@ -76,6 +99,10 @@ export const deleteJobApplication = async (req, res) => {
         if (!application) {
             return res.status(404).json({ success: false, message: 'Job application not found' });
         }
+
+        // Delete attached files from S3 (resume, photo, photo1) before removing the record
+        await deleteApplicationFiles(application);
+
         await application.deleteOne();
         res.status(200).json({ success: true, data: {} });
     } catch (error) {
@@ -95,9 +122,14 @@ export const bulkDeleteJobApplications = async (req, res) => {
             return res.status(400).json({ success: false, message: 'No application IDs provided' });
         }
 
-        await JobApplication.deleteMany({
-            _id: { $in: ids }
-        });
+        // Fetch all records first so we can collect their attachment URLs
+        const applications = await JobApplication.find({ _id: { $in: ids } });
+
+        // Delete all attached files from S3 concurrently (best-effort)
+        await Promise.allSettled(applications.map(app => deleteApplicationFiles(app)));
+
+        // Remove the DB records
+        await JobApplication.deleteMany({ _id: { $in: ids } });
 
         res.status(200).json({ success: true, message: 'Job applications deleted successfully' });
     } catch (error) {
