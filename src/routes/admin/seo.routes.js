@@ -14,10 +14,8 @@ const router = express.Router();
 
 // Static Pages
 router.get("/static", verifyToken, getAllPageSEO); // Admin list
+router.get("/static/public/:identifier", getPageSEOByIdentifier); // Public fetch — MUST be before /:pageIdentifier to avoid Express shadowing
 router.put("/static/:pageIdentifier", verifyToken, updatePageSEO); // Admin update
-router.get("/static/public/:identifier", getPageSEOByIdentifier); // Public fetch (no token needed?) - keeping it here or separate public route. 
-// Ideally public routes should be in public folder, but for now we can mount this here or reuse controller.
-// Actually, let's keep public access open or minimal if used by layout.js server-side.
 
 // Categories
 router.get("/categories", verifyToken, getAllCategorySEO);

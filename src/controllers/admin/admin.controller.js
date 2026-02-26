@@ -250,7 +250,8 @@ export const createAdmin = async (req, res) => {
                     dashboard: true, contentModeration: true, categoryManagement: true,
                     vendorManagement: true, reviewManagement: true, analyticsInsights: true,
                     supportTickets: true, adManagement: true, bundleManagement: true,
-                    adminUserSettings: true, adminSettings: true, // Included all permissions
+                    careersManagement: true, newsletterManagement: true,
+                    adminUserSettings: true, adminSettings: true,
                 }
                 : (accessControl && typeof accessControl === 'object'
                     ? accessControl
@@ -265,6 +266,8 @@ export const createAdmin = async (req, res) => {
                         adManagement: false,
                         referralManagement: false,
                         bundleManagement: false,
+                        careersManagement: false,
+                        newsletterManagement: false,
                         adminUserSettings: false,
                         adminSettings: true,
                     }),

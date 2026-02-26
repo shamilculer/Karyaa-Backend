@@ -62,6 +62,7 @@ import { createBanner, deleteBanner, getAllBanners, toggleStatus, updateBanner }
 import { deleteReferrals, getReferrals, updateReferralStatus } from "../../controllers/user/referral.controller.js";
 import { bulkUpdateContent, deleteContent, getAllContent, getContentByKey, getLandingPageStructure, upsertContent } from "../../controllers/admin/pages.controller.js";
 import { adminGetAllLeads, adminUpdateLeadStatus, adminDeleteLead } from "../../controllers/admin/lead.controller.js";
+import { getAllSubscribers, exportSubscribersToExcel } from "../../controllers/admin/newsletter.admin.controller.js";
 
 const router = express.Router();
 
@@ -165,5 +166,9 @@ router.delete("/content/:key", verifyToken, deleteContent);
 router.get("/leads", verifyToken, adminGetAllLeads);
 router.patch("/leads/status", verifyToken, adminUpdateLeadStatus);
 router.delete("/leads", verifyToken, adminDeleteLead);
+
+// Admin Newsletter Management Routes
+router.get("/newsletter/subscribers/export", verifyToken, exportSubscribersToExcel);
+router.get("/newsletter/subscribers", verifyToken, getAllSubscribers);
 
 export default router;

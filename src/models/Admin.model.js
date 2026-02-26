@@ -76,6 +76,8 @@ const adminSchema = new mongoose.Schema(
       adManagement: { type: Boolean, default: false },
       referralManagement: { type: Boolean, default: false },
       bundleManagement: { type: Boolean, default: false },
+      careersManagement: { type: Boolean, default: false },
+      newsletterManagement: { type: Boolean, default: false },
       adminUserSettings: { type: Boolean, default: false },
       adminSettings: { type: Boolean, default: true },
     },

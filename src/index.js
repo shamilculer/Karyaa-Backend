@@ -41,6 +41,10 @@ import dashboardRoute from "./routes/admin/dashboard.routes.js"
 import complaintRoutes from "./routes/public/complaint.routes.js"
 import adminComplaintRoutes from "./routes/admin/complaint.routes.js"
 
+// Job Routes
+import publicJobRoutes from "./routes/public/job.routes.js"
+import adminJobPostingRoutes from "./routes/admin/jobPosting.routes.js"
+import adminJobApplicationRoutes from "./routes/admin/jobApplication.routes.js"
 
 dotenv.config();
 
@@ -104,6 +108,10 @@ app.use('/v1/admin/seo', seoRoutes)
 app.use('/v1/complaints', complaintRoutes)
 app.use('/v1/admin/complaints', adminComplaintRoutes)
 
+// Job Routes
+app.use('/v1/jobs', publicJobRoutes)
+app.use('/v1/admin/job-postings', adminJobPostingRoutes)
+app.use('/v1/admin/job-applications', adminJobApplicationRoutes)
 
 const startServer = async () => {
   try {

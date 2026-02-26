@@ -221,20 +221,6 @@ export const registerVendor = async (req, res) => {
     // Now that we have the slug, we can move files from temp_vendors/ to vendors/{slug}/
     try {
       const { moveS3Object, getKeyFromUrl } = await import("../utils/s3.js");
-      const fileFields = [
-        'businessLogo',
-        'tradeLicenseCopy',
-        'personalEmiratesIdNumber', // Wait, this is a number, not a file? Check schema.
-        'emiratesIdCopy',
-        'businessLicenseCopy',
-        'passportOrIdCopy'
-      ];
-
-      // Note: personalEmiratesIdNumber is a string (number), not a file. 
-      // tradeLicenseNumber is also a string.
-      // The file fields are: businessLogo, tradeLicenseCopy, emiratesIdCopy, businessLicenseCopy, passportOrIdCopy.
-      // Also ownerProfileImage if it was uploaded (but schema says it's generated if missing).
-
       const actualFileFields = [
         'businessLogo',
         'tradeLicenseCopy',
@@ -260,8 +246,6 @@ export const registerVendor = async (req, res) => {
               hasUpdates = true;
             } catch (moveError) {
               console.error(`Failed to move file for field ${field}:`, moveError);
-              // Continue even if one fails, or maybe flag it? 
-              // For now, we log it. The file remains in temp.
             }
           }
         }
@@ -273,7 +257,6 @@ export const registerVendor = async (req, res) => {
 
     } catch (err) {
       console.error("Error moving files to permanent storage:", err);
-      // We don't fail the request if moving fails, but we should probably alert admin or log it.
     }
 
     // --- SEND EMAIL NOTIFICATIONS ---
@@ -316,8 +299,7 @@ export const registerVendor = async (req, res) => {
   } catch (error) {
     console.error("Vendor registration error:", error);
 
-    // Handle duplicate key errors (e.g., businessName)
-    // Handle duplicate key errors (e.g., businessName)
+    // Handle duplicate key errors
     if (error.code === 11000) {
       if (error.keyPattern) {
         if (error.keyPattern.businessName) {
@@ -400,7 +382,7 @@ export const loginVendor = async (req, res) => {
       });
     }
 
-    // TODO: replace this with 
+
     const isMatch = await bcrypt.compare(password, vendor.password);
     if (!isMatch) {
       return res
@@ -416,7 +398,7 @@ export const loginVendor = async (req, res) => {
       businessName: vendor.businessName,
       businessLogo: vendor.businessLogo,
       role: vendor.role,
-      email: vendor.emailAddress,
+      email: vendor.email,
       slug: vendor.slug,
       tagline: vendor.tagline,
       bundle: vendor.selectedBundle

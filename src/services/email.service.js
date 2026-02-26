@@ -33,6 +33,10 @@ import {
     adminComplaintAlertTemplate,
     complaintStatusUpdateTemplate
 } from '../utils/templates/complaintEmails.js';
+import {
+    careerApplicationConfirmationTemplate,
+    adminCareerApplicationAlertTemplate,
+} from '../utils/templates/careerEmails.js';
 
 /**
  * Email Service
@@ -163,6 +167,17 @@ const EMAIL_TEMPLATES = {
         template: complaintStatusUpdateTemplate,
         subject: (data) => `Complaint Status Update - ${data.complaintId}`,
         senderType: 'noreply',
+    },
+    'career-application-confirmation': {
+        template: careerApplicationConfirmationTemplate,
+        subject: (data) => `Application Received - ${data.jobTitle}`,
+        senderType: 'noreply',
+    },
+    'admin-career-application-alert': {
+        template: adminCareerApplicationAlertTemplate,
+        subject: (data) => `New Job Application - ${data.jobTitle} (${data.applicationId})`,
+        senderType: 'noreply',
+        recipientOverride: () => process.env.EMAIL_CAREERS || 'careers@karyaa.ae',
     },
 };
 

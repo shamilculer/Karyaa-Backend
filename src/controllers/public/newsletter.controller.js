@@ -1,4 +1,5 @@
 import { sendEmail } from "../../services/email.service.js";
+import NewsletterSubscriber from "../../models/NewsletterSubscriber.model.js";
 
 /**
  * @description Handles newsletter subscription by sending confirmation emails
@@ -26,6 +27,20 @@ export const subscribeToNewsletter = async (req, res) => {
             });
         }
 
+        // Save subscriber to database
+        try {
+            await NewsletterSubscriber.create({ email, name: name || '' });
+        } catch (dbError) {
+            // Duplicate key error — email already subscribed
+            if (dbError.code === 11000) {
+                return res.status(200).json({
+                    success: true,
+                    message: "You're already subscribed to our newsletter!",
+                });
+            }
+            throw dbError;
+        }
+
         // Send emails
         try {
             const emailData = {
@@ -51,10 +66,7 @@ export const subscribeToNewsletter = async (req, res) => {
             console.log(`✅ Newsletter subscription emails sent for ${email}`);
         } catch (emailError) {
             console.error("Error sending newsletter emails:", emailError);
-            return res.status(500).json({
-                success: false,
-                message: "Failed to process your subscription. Please try again later.",
-            });
+            // Subscriber is saved — don't fail the whole request over email errors
         }
 
         res.status(200).json({

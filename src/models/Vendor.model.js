@@ -128,6 +128,7 @@ const vendorSchema = mongoose.Schema(
             required: [true, "Business Name is required for vendor listing"],
             unique: true,
             trim: true,
+            maxlength: [30, "Business name cannot exceed 30 characters"],
         },
         slug: {
             type: String,
